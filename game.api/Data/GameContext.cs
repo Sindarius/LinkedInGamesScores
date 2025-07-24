@@ -25,7 +25,7 @@ namespace game.api.Data
                     Id = 1,
                     Name = "Queens",
                     Description = "LinkedIn Queens puzzle game",
-                    CreatedDate = DateTime.UtcNow,
+                    CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     IsActive = true
                 },
                 new Game
@@ -33,7 +33,7 @@ namespace game.api.Data
                     Id = 2,
                     Name = "Pinpoint",
                     Description = "LinkedIn Pinpoint geography game",
-                    CreatedDate = DateTime.UtcNow,
+                    CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     IsActive = true
                 },
                 new Game
@@ -41,7 +41,7 @@ namespace game.api.Data
                     Id = 3,
                     Name = "Crossclimb",
                     Description = "LinkedIn Crossclimb word ladder game",
-                    CreatedDate = DateTime.UtcNow,
+                    CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
                     IsActive = true
                 }
             );

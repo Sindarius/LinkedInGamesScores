@@ -131,3 +131,5 @@ G:\GitHub\LinkedInGameScores\game.api\obj\Debug\net8.0\refint\game.api.dll
 G:\GitHub\LinkedInGameScores\game.api\obj\Debug\net8.0\game.api.pdb
 G:\GitHub\LinkedInGameScores\game.api\obj\Debug\net8.0\game.api.genruntimeconfig.cache
 G:\GitHub\LinkedInGameScores\game.api\obj\Debug\net8.0\ref\game.api.dll
+G:\GitHub\LinkedInGameScores\game.api\bin\Debug\net8.0\Npgsql.dll
+G:\GitHub\LinkedInGameScores\game.api\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll

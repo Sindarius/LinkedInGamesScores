@@ -4,7 +4,7 @@
             <div class="flex justify-between items-center">
                 <span>{{ selectedGame?.name || 'All Games' }} Leaderboard</span>
                 <div class="flex items-center space-x-2">
-                    <Calendar 
+                    <DatePicker 
                         v-model="selectedDate" 
                         dateFormat="mm/dd/yy"
                         :showIcon="true"

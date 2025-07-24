@@ -5,7 +5,7 @@
             <form @submit.prevent="submitScore" class="space-y-4">
                 <div class="field">
                     <label for="game">Game</label>
-                    <Dropdown 
+                    <Select 
                         id="game"
                         v-model="selectedGame" 
                         :options="games" 

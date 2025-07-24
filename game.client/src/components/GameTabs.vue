@@ -1,24 +1,26 @@
 <template>
     <div class="game-tabs">
-        <TabView @tab-change="onTabChange">
-            <TabPanel header="All Games">
-                <DailyLeaderboard 
-                    :gameId="null" 
-                    :refreshTrigger="refreshTrigger"
-                />
-            </TabPanel>
-            
-            <TabPanel 
-                v-for="game in games" 
-                :key="game.id" 
-                :header="game.name"
-            >
-                <DailyLeaderboard 
-                    :gameId="game.id" 
-                    :refreshTrigger="refreshTrigger"
-                />
-            </TabPanel>
-        </TabView>
+        <Tabs @tab-change="onTabChange">
+            <TabList>
+                <Tab>All Games</Tab>
+                <Tab v-for="game in games" :key="game.id">{{ game.name }}</Tab>
+            </TabList>
+            <TabPanels>
+                <TabPanel>
+                    <DailyLeaderboard 
+                        :gameId="null" 
+                        :refreshTrigger="refreshTrigger"
+                    />
+                </TabPanel>
+                
+                <TabPanel v-for="game in games" :key="game.id">
+                    <DailyLeaderboard 
+                        :gameId="game.id" 
+                        :refreshTrigger="refreshTrigger"
+                    />
+                </TabPanel>
+            </TabPanels>
+        </Tabs>
     </div>
 </template>
 

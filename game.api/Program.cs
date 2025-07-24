@@ -34,19 +34,18 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<GameContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
     try
     {
+        logger.LogInformation("Applying database migrations...");
         context.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully.");
     }
     catch (Exception ex)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while migrating the database.");
-        // In development, we can still use EnsureCreated as fallback
-        if (app.Environment.IsDevelopment())
-        {
-            context.Database.EnsureCreated();
-        }
+        throw; // Don't continue if database setup fails
     }
 }
 

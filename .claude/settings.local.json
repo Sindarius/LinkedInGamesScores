@@ -5,7 +5,9 @@
       "Bash(dotnet add package:*)",
       "Bash(docker-compose:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(dotnet ef migrations:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }
