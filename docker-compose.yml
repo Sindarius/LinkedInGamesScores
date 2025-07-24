@@ -11,7 +11,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - game-scores-network
@@ -52,13 +52,7 @@ services:
       - game-scores-network
     restart: unless-stopped
 
-volumes:
-  postgres_data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./data/postgres
+# Removed volumes section - using direct bind mounts instead
 
 networks:
   game-scores-network:

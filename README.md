@@ -23,12 +23,21 @@ A full-stack application for tracking daily scores from LinkedIn games (Queens, 
    cd LinkedInGameScores
    ```
 
-2. **Start all services**
+2. **Run setup script (creates required directories)**
+   ```bash
+   # On Windows
+   setup.bat
+   
+   # On Linux/Mac
+   ./setup.sh
+   ```
+
+3. **Start all services**
    ```bash
    docker-compose up -d
    ```
 
-3. **Access the application**
+4. **Access the application**
    - **Frontend**: http://localhost:3000
    - **API**: http://localhost:5000
    - **API Documentation**: http://localhost:5000/swagger
@@ -39,7 +48,7 @@ A full-stack application for tracking daily scores from LinkedIn games (Queens, 
   - Database: `gamescores`
   - Username: `postgres` 
   - Password: `postgres`
-  - **Persistent Data**: Stored in `./data/postgres/`
+  - **Persistent Data**: Stored in `./data/postgres/` (bind mount)
 
 - **API Server**: `localhost:5000`
   - .NET 8 WebAPI
