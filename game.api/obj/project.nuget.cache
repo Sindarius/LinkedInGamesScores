@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "LlJF1apM62ziycLbz/HZyqg8JjwLuSosWtJwMxTruJplDSy8rwrwJS5nQhl+M81qPMFzt+BxmfFBfTIFl3fjfg==",
+  "dgSpecHash": "1J0GoeJL1Q25yPg6eLYSaKqf/dfPBUP/OmYkToM2gzYQYutyWqw6nUp7wqc4xD7WHJQmnjDUwZJge6PUyKIJTQ==",
   "success": true,
   "projectFilePath": "G:\\GitHub\\LinkedInGameScores\\game.api\\game.api.csproj",
   "expectedPackageFiles": [
@@ -34,6 +34,8 @@
     "C:\\Users\\Sindarius\\.nuget\\packages\\microsoft.extensions.primitives\\9.0.7\\microsoft.extensions.primitives.9.0.7.nupkg.sha512",
     "C:\\Users\\Sindarius\\.nuget\\packages\\microsoft.openapi\\1.6.14\\microsoft.openapi.1.6.14.nupkg.sha512",
     "C:\\Users\\Sindarius\\.nuget\\packages\\mono.texttemplating\\3.0.0\\mono.texttemplating.3.0.0.nupkg.sha512",
+    "C:\\Users\\Sindarius\\.nuget\\packages\\npgsql\\9.0.3\\npgsql.9.0.3.nupkg.sha512",
+    "C:\\Users\\Sindarius\\.nuget\\packages\\npgsql.entityframeworkcore.postgresql\\9.0.4\\npgsql.entityframeworkcore.postgresql.9.0.4.nupkg.sha512",
     "C:\\Users\\Sindarius\\.nuget\\packages\\swashbuckle.aspnetcore\\6.6.2\\swashbuckle.aspnetcore.6.6.2.nupkg.sha512",
     "C:\\Users\\Sindarius\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\6.6.2\\swashbuckle.aspnetcore.swagger.6.6.2.nupkg.sha512",
     "C:\\Users\\Sindarius\\.nuget\\packages\\swashbuckle.aspnetcore.swaggergen\\6.6.2\\swashbuckle.aspnetcore.swaggergen.6.6.2.nupkg.sha512",

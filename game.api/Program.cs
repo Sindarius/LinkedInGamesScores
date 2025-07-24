@@ -4,8 +4,11 @@ using game.api.Data;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? "Host=localhost;Database=gamescores;Username=postgres;Password=postgres";
+
 builder.Services.AddDbContext<GameContext>(options =>
-    options.UseInMemoryDatabase("GameScoresDb"));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddControllers();
 
@@ -31,7 +34,20 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<GameContext>();
-    context.Database.EnsureCreated();
+    try
+    {
+        context.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while migrating the database.");
+        // In development, we can still use EnsureCreated as fallback
+        if (app.Environment.IsDevelopment())
+        {
+            context.Database.EnsureCreated();
+        }
+    }
 }
 
 // Configure the HTTP request pipeline.
