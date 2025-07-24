@@ -1,46 +1,3 @@
-<template>
-    <div class="game-scores-page">
-        <div class="mb-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">LinkedIn Game Scores</h1>
-            <p class="text-gray-600">Track your daily scores and compete with others!</p>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Score Submission Form -->
-            <div class="lg:col-span-1">
-                <ScoreSubmissionForm @scoreSubmitted="onScoreSubmitted" />
-            </div>
-
-            <!-- Leaderboards -->
-            <div class="lg:col-span-2">
-                <GameTabs :refreshTrigger="refreshTrigger" @tab-changed="onTabChanged" />
-            </div>
-        </div>
-
-        <div class="mt-8">
-            <Card>
-                <template #title>Quick Stats</template>
-                <template #content>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="text-center p-4 bg-blue-50 rounded-lg">
-                            <div class="text-2xl font-bold text-blue-600">{{ totalScores }}</div>
-                            <div class="text-sm text-gray-600">Total Scores</div>
-                        </div>
-                        <div class="text-center p-4 bg-green-50 rounded-lg">
-                            <div class="text-2xl font-bold text-green-600">{{ activePlayers }}</div>
-                            <div class="text-sm text-gray-600">Active Players</div>
-                        </div>
-                        <div class="text-center p-4 bg-purple-50 rounded-lg">
-                            <div class="text-2xl font-bold text-purple-600">{{ gamesCount }}</div>
-                            <div class="text-sm text-gray-600">Games Available</div>
-                        </div>
-                    </div>
-                </template>
-            </Card>
-        </div>
-    </div>
-</template>
-
 <script>
 import ScoreSubmissionForm from '@/components/ScoreSubmissionForm.vue';
 import GameTabs from '@/components/GameTabs.vue';
@@ -87,8 +44,7 @@ export default {
                 }
 
                 this.totalScores = allScores.length;
-                this.activePlayers = new Set(allScores.map(score => score.playerName)).size;
-
+                this.activePlayers = new Set(allScores.map((score) => score.playerName)).size;
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
@@ -96,6 +52,49 @@ export default {
     }
 };
 </script>
+
+<template>
+    <div class="game-scores-page">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">LinkedIn Game Scores</h1>
+            <p class="text-gray-600">Track your daily scores and compete with others!</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Score Submission Form -->
+            <div class="lg:col-span-1">
+                <ScoreSubmissionForm @scoreSubmitted="onScoreSubmitted" />
+            </div>
+
+            <!-- Leaderboards -->
+            <div class="lg:col-span-2">
+                <GameTabs :refreshTrigger="refreshTrigger" @tab-changed="onTabChanged" />
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <Card>
+                <template #title>Quick Stats</template>
+                <template #content>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600">{{ totalScores }}</div>
+                            <div class="text-sm text-gray-600">Total Scores</div>
+                        </div>
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <div class="text-2xl font-bold text-green-600">{{ activePlayers }}</div>
+                            <div class="text-sm text-gray-600">Active Players</div>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-600">{{ gamesCount }}</div>
+                            <div class="text-sm text-gray-600">Games Available</div>
+                        </div>
+                    </div>
+                </template>
+            </Card>
+        </div>
+    </div>
+</template>
 
 <style scoped>
 .game-scores-page {

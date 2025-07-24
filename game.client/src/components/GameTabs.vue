@@ -1,29 +1,3 @@
-<template>
-    <div class="game-tabs">
-        <Tabs @tab-change="onTabChange">
-            <TabList>
-                <Tab>All Games</Tab>
-                <Tab v-for="game in games" :key="game.id">{{ game.name }}</Tab>
-            </TabList>
-            <TabPanels>
-                <TabPanel>
-                    <DailyLeaderboard 
-                        :gameId="null" 
-                        :refreshTrigger="refreshTrigger"
-                    />
-                </TabPanel>
-                
-                <TabPanel v-for="game in games" :key="game.id">
-                    <DailyLeaderboard 
-                        :gameId="game.id" 
-                        :refreshTrigger="refreshTrigger"
-                    />
-                </TabPanel>
-            </TabPanels>
-        </Tabs>
-    </div>
-</template>
-
 <script>
 import { GameService } from '@/services/gameService.js';
 import DailyLeaderboard from './DailyLeaderboard.vue';
@@ -72,6 +46,26 @@ export default {
     }
 };
 </script>
+
+<template>
+    <div class="game-tabs">
+        <Tabs @tab-change="onTabChange">
+            <TabList>
+                <Tab>All Games</Tab>
+                <Tab v-for="game in games" :key="game.id">{{ game.name }}</Tab>
+            </TabList>
+            <TabPanels>
+                <TabPanel>
+                    <DailyLeaderboard :gameId="null" :refreshTrigger="refreshTrigger" />
+                </TabPanel>
+
+                <TabPanel v-for="game in games" :key="game.id">
+                    <DailyLeaderboard :gameId="game.id" :refreshTrigger="refreshTrigger" />
+                </TabPanel>
+            </TabPanels>
+        </Tabs>
+    </div>
+</template>
 
 <style scoped>
 .game-tabs {

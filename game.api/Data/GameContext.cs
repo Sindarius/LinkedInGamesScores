@@ -26,7 +26,8 @@ namespace game.api.Data
                     Name = "Queens",
                     Description = "LinkedIn Queens puzzle game",
                     CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                    IsActive = true
+                    IsActive = true,
+                    ScoringType = ScoringType.Guesses
                 },
                 new Game
                 {
@@ -34,7 +35,8 @@ namespace game.api.Data
                     Name = "Pinpoint",
                     Description = "LinkedIn Pinpoint geography game",
                     CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                    IsActive = true
+                    IsActive = true,
+                    ScoringType = ScoringType.Time
                 },
                 new Game
                 {
@@ -42,7 +44,8 @@ namespace game.api.Data
                     Name = "Crossclimb",
                     Description = "LinkedIn Crossclimb word ladder game",
                     CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc),
-                    IsActive = true
+                    IsActive = true,
+                    ScoringType = ScoringType.Guesses
                 }
             );
         }

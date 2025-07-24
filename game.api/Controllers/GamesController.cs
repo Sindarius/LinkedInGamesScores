@@ -17,19 +17,47 @@ namespace game.api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Game>>> GetGames()
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetGames()
         {
-            return await _context.Games
-                .Include(g => g.Scores)
+            var games = await _context.Games
                 .Where(g => g.IsActive)
                 .ToListAsync();
+
+            var gameDtos = games.Select(g => new GameDto
+            {
+                Id = g.Id,
+                Name = g.Name,
+                Description = g.Description,
+                CreatedDate = g.CreatedDate,
+                IsActive = g.IsActive,
+                ScoringType = g.ScoringType
+            }).ToList();
+
+            return gameDtos;
+        }
+
+        [HttpGet("all")]
+        public async Task<ActionResult<IEnumerable<GameDto>>> GetAllGamesForAdmin()
+        {
+            var games = await _context.Games.ToListAsync();
+
+            var gameDtos = games.Select(g => new GameDto
+            {
+                Id = g.Id,
+                Name = g.Name,
+                Description = g.Description,
+                CreatedDate = g.CreatedDate,
+                IsActive = g.IsActive,
+                ScoringType = g.ScoringType
+            }).ToList();
+
+            return gameDtos;
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<Game>> GetGame(int id)
+        public async Task<ActionResult<GameDto>> GetGame(int id)
         {
             var game = await _context.Games
-                .Include(g => g.Scores)
                 .FirstOrDefaultAsync(g => g.Id == id && g.IsActive);
 
             if (game == null)
@@ -37,7 +65,17 @@ namespace game.api.Controllers
                 return NotFound();
             }
 
-            return game;
+            var gameDto = new GameDto
+            {
+                Id = game.Id,
+                Name = game.Name,
+                Description = game.Description,
+                CreatedDate = game.CreatedDate,
+                IsActive = game.IsActive,
+                ScoringType = game.ScoringType
+            };
+
+            return gameDto;
         }
 
         [HttpPost]

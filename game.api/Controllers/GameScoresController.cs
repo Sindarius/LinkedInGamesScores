@@ -17,48 +17,138 @@ namespace game.api.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<GameScore>>> GetGameScores()
+        public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetGameScores()
         {
-            return await _context.GameScores
+            var gameScoreDtos = await _context.GameScores
                 .Include(gs => gs.Game)
-                .OrderByDescending(gs => gs.Score)
+                .OrderBy(gs => gs.Game!.ScoringType == ScoringType.Time 
+                    ? (gs.CompletionTime.HasValue ? (int)gs.CompletionTime.Value.TotalSeconds : 0) 
+                    : 0)
+                .ThenByDescending(gs => gs.Game!.ScoringType == ScoringType.Guesses 
+                    ? (gs.GuessCount ?? 0) 
+                    : 0)
+                .Select(gs => new GameScoreDto
+                {
+                    Id = gs.Id,
+                    GameId = gs.GameId,
+                    PlayerName = gs.PlayerName,
+                    GuessCount = gs.GuessCount,
+                    CompletionTime = gs.CompletionTime,
+                    Score = gs.Game!.ScoringType == ScoringType.Time 
+                        ? (int)(gs.CompletionTime.HasValue ? gs.CompletionTime.Value.TotalSeconds : 0)
+                        : (gs.GuessCount ?? 0),
+                    DateAchieved = gs.DateAchieved,
+                    LinkedInProfileUrl = gs.LinkedInProfileUrl,
+                    GameName = gs.Game!.Name,
+                    ScoringType = gs.Game!.ScoringType
+                })
                 .ToListAsync();
+
+            return gameScoreDtos;
         }
 
         [HttpGet("{id}")]
-        public async Task<ActionResult<GameScore>> GetGameScore(int id)
+        public async Task<ActionResult<GameScoreDto>> GetGameScore(int id)
         {
-            var gameScore = await _context.GameScores
+            var gameScoreDto = await _context.GameScores
                 .Include(gs => gs.Game)
-                .FirstOrDefaultAsync(gs => gs.Id == id);
+                .Where(gs => gs.Id == id)
+                .Select(gs => new GameScoreDto
+                {
+                    Id = gs.Id,
+                    GameId = gs.GameId,
+                    PlayerName = gs.PlayerName,
+                    GuessCount = gs.GuessCount,
+                    CompletionTime = gs.CompletionTime,
+                    Score = gs.Game!.ScoringType == ScoringType.Time 
+                        ? (int)(gs.CompletionTime.HasValue ? gs.CompletionTime.Value.TotalSeconds : 0)
+                        : (gs.GuessCount ?? 0),
+                    DateAchieved = gs.DateAchieved,
+                    LinkedInProfileUrl = gs.LinkedInProfileUrl,
+                    GameName = gs.Game!.Name,
+                    ScoringType = gs.Game!.ScoringType
+                })
+                .FirstOrDefaultAsync();
 
-            if (gameScore == null)
+            if (gameScoreDto == null)
             {
                 return NotFound();
             }
 
-            return gameScore;
+            return gameScoreDto;
         }
 
         [HttpGet("game/{gameId}")]
-        public async Task<ActionResult<IEnumerable<GameScore>>> GetGameScoresByGame(int gameId)
+        public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetGameScoresByGame(int gameId)
         {
-            return await _context.GameScores
-                .Include(gs => gs.Game)
+            var game = await _context.Games.FindAsync(gameId);
+            if (game == null) return NotFound();
+
+            var gameScores = await _context.GameScores
                 .Where(gs => gs.GameId == gameId)
-                .OrderByDescending(gs => gs.Score)
                 .ToListAsync();
+
+            var gameScoreDtos = gameScores
+                .Where(gs => 
+                    (game.ScoringType == ScoringType.Time && gs.CompletionTime.HasValue) ||
+                    (game.ScoringType == ScoringType.Guesses && gs.GuessCount.HasValue))
+                .Select(gs => new GameScoreDto
+                {
+                    Id = gs.Id,
+                    GameId = gs.GameId,
+                    PlayerName = gs.PlayerName,
+                    GuessCount = gs.GuessCount,
+                    CompletionTime = gs.CompletionTime,
+                    Score = game.ScoringType == ScoringType.Time 
+                        ? (int)gs.CompletionTime!.Value.TotalSeconds
+                        : gs.GuessCount!.Value,
+                    DateAchieved = gs.DateAchieved,
+                    LinkedInProfileUrl = gs.LinkedInProfileUrl,
+                    GameName = game.Name,
+                    ScoringType = game.ScoringType
+                })
+                .OrderBy(gs => game.ScoringType == ScoringType.Time ? gs.Score : 0)
+                .ThenByDescending(gs => game.ScoringType == ScoringType.Guesses ? gs.Score : 0)
+                .ToList();
+
+            return gameScoreDtos;
         }
 
         [HttpGet("game/{gameId}/leaderboard")]
-        public async Task<ActionResult<IEnumerable<GameScore>>> GetLeaderboard(int gameId, int top = 10)
+        public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetLeaderboard(int gameId, int top = 10)
         {
-            return await _context.GameScores
-                .Include(gs => gs.Game)
+            var game = await _context.Games.FindAsync(gameId);
+            if (game == null) return NotFound();
+
+            var gameScores = await _context.GameScores
                 .Where(gs => gs.GameId == gameId)
-                .OrderByDescending(gs => gs.Score)
-                .Take(top)
                 .ToListAsync();
+
+            var gameScoreDtos = gameScores
+                .Where(gs => 
+                    (game.ScoringType == ScoringType.Time && gs.CompletionTime.HasValue) ||
+                    (game.ScoringType == ScoringType.Guesses && gs.GuessCount.HasValue))
+                .Select(gs => new GameScoreDto
+                {
+                    Id = gs.Id,
+                    GameId = gs.GameId,
+                    PlayerName = gs.PlayerName,
+                    GuessCount = gs.GuessCount,
+                    CompletionTime = gs.CompletionTime,
+                    Score = game.ScoringType == ScoringType.Time 
+                        ? (int)gs.CompletionTime!.Value.TotalSeconds
+                        : gs.GuessCount!.Value,
+                    DateAchieved = gs.DateAchieved,
+                    LinkedInProfileUrl = gs.LinkedInProfileUrl,
+                    GameName = game.Name,
+                    ScoringType = game.ScoringType
+                })
+                .OrderBy(gs => game.ScoringType == ScoringType.Time ? gs.Score : 0)
+                .ThenByDescending(gs => game.ScoringType == ScoringType.Guesses ? gs.Score : 0)
+                .Take(top)
+                .ToList();
+
+            return gameScoreDtos;
         }
 
         [HttpPost]

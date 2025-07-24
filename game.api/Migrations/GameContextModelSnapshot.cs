@@ -44,6 +44,9 @@ namespace game.api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("ScoringType")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.ToTable("Games");
@@ -55,7 +58,8 @@ namespace game.api.Migrations
                             CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "LinkedIn Queens puzzle game",
                             IsActive = true,
-                            Name = "Queens"
+                            Name = "Queens",
+                            ScoringType = 1
                         },
                         new
                         {
@@ -63,7 +67,8 @@ namespace game.api.Migrations
                             CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "LinkedIn Pinpoint geography game",
                             IsActive = true,
-                            Name = "Pinpoint"
+                            Name = "Pinpoint",
+                            ScoringType = 2
                         },
                         new
                         {
@@ -71,7 +76,8 @@ namespace game.api.Migrations
                             CreatedDate = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "LinkedIn Crossclimb word ladder game",
                             IsActive = true,
-                            Name = "Crossclimb"
+                            Name = "Crossclimb",
+                            ScoringType = 1
                         });
                 });
 
@@ -83,10 +89,16 @@ namespace game.api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<TimeSpan?>("CompletionTime")
+                        .HasColumnType("interval");
+
                     b.Property<DateTime>("DateAchieved")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("GameId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("GuessCount")
                         .HasColumnType("integer");
 
                     b.Property<string>("LinkedInProfileUrl")
@@ -95,9 +107,6 @@ namespace game.api.Migrations
                     b.Property<string>("PlayerName")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<int>("Score")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

@@ -1,8 +1,9 @@
-const API_BASE_URL = window.location.hostname === 'localhost' && window.location.port === '3000'
-    ? 'http://localhost:5000/api'  // Docker environment
-    : process.env.NODE_ENV === 'production' 
-        ? 'http://localhost:5000/api' 
-        : 'https://localhost:7036/api';
+const API_BASE_URL =
+    window.location.hostname === 'localhost' && window.location.port === '3000'
+        ? 'http://localhost:5000/api' // Docker environment
+        : process.env.NODE_ENV === 'production'
+          ? 'http://localhost:5000/api'
+          : 'https://localhost:7036/api';
 
 export class GameService {
     async getGames() {
@@ -23,9 +24,7 @@ export class GameService {
             }
             const scores = await response.json();
             const targetDate = new Date(date).toDateString();
-            return scores.filter(score => 
-                new Date(score.dateAchieved).toDateString() === targetDate
-            );
+            return scores.filter((score) => new Date(score.dateAchieved).toDateString() === targetDate);
         }
         const response = await fetch(url);
         if (!response.ok) {
@@ -38,11 +37,20 @@ export class GameService {
         if (date) {
             // Get filtered scores for specific date
             const scores = await this.getGameScores(gameId, date);
+            // Sort based on scoring type - time-based games should sort ascending (lower is better)
             return scores
-                .sort((a, b) => b.score - a.score)
+                .sort((a, b) => {
+                    if (a.scoringType === 2) {
+                        // Time-based scoring
+                        return a.score - b.score; // Lower time is better
+                    } else {
+                        // Guess-based scoring
+                        return a.score - b.score; // Lower guesses is better
+                    }
+                })
                 .slice(0, top);
         }
-        
+
         const response = await fetch(`${API_BASE_URL}/gamescores/game/${gameId}/leaderboard?top=${top}`);
         if (!response.ok) {
             throw new Error('Failed to fetch leaderboard');
@@ -54,11 +62,11 @@ export class GameService {
         const response = await fetch(`${API_BASE_URL}/gamescores`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(gameScore)
         });
-        
+
         if (!response.ok) {
             throw new Error('Failed to submit score');
         }
@@ -69,17 +77,15 @@ export class GameService {
         const scores = await this.getGameScores(gameId);
         const start = new Date(startDate);
         const end = new Date(endDate);
-        
-        return scores.filter(score => {
+
+        return scores.filter((score) => {
             const scoreDate = new Date(score.dateAchieved);
             return scoreDate >= start && scoreDate <= end;
         });
     }
 
     getAvailableDates(scores) {
-        const dates = [...new Set(scores.map(score => 
-            new Date(score.dateAchieved).toDateString()
-        ))];
+        const dates = [...new Set(scores.map((score) => new Date(score.dateAchieved).toDateString()))];
         return dates.sort((a, b) => new Date(b) - new Date(a));
     }
 }

@@ -7,7 +7,15 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(dotnet ef migrations:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker restart:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker compose:*)",
+      "Bash(npm run dev:*)",
+      "Bash(dotnet run)",
+      "Bash(npm install:*)",
+      "Bash(timeout 10 npm run dev)"
     ],
     "deny": []
   }
