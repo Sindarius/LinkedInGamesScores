@@ -30,7 +30,7 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                     </g>
                 </svg>
 
-                <span>SAKAI</span>
+                <span>LinkedIn Game Scores</span>
             </router-link>
         </div>
 
@@ -61,16 +61,12 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
                     <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
+                        <i class="pi pi-trophy"></i>
+                        <span>Leaderboard</span>
                     </button>
                     <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
+                        <i class="pi pi-chart-line"></i>
+                        <span>Statistics</span>
                     </button>
                 </div>
             </div>
