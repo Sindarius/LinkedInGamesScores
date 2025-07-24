@@ -12,13 +12,13 @@ builder.Services.AddDbContext<GameContext>(options =>
 
 builder.Services.AddControllers();
 
-// Add CORS
+// Add CORS - Allow all origins
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowVueClient",
+    options.AddPolicy("AllowAll",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000", "http://localhost:5173", "http://localhost:8080")
+            policy.AllowAnyOrigin()
                   .AllowAnyHeader()
                   .AllowAnyMethod();
         });
@@ -57,9 +57,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// Remove HTTPS redirection for Docker compatibility
+// app.UseHttpsRedirection();
 
-app.UseCors("AllowVueClient");
+app.UseCors("AllowAll");
 
 app.UseAuthorization();
 

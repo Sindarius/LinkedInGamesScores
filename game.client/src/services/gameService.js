@@ -1,6 +1,8 @@
-const API_BASE_URL = process.env.NODE_ENV === 'production' 
-    ? 'http://localhost:5000/api' 
-    : 'https://localhost:7036/api';
+const API_BASE_URL = window.location.hostname === 'localhost' && window.location.port === '3000'
+    ? 'http://localhost:5000/api'  // Docker environment
+    : process.env.NODE_ENV === 'production' 
+        ? 'http://localhost:5000/api' 
+        : 'https://localhost:7036/api';
 
 export class GameService {
     async getGames() {
