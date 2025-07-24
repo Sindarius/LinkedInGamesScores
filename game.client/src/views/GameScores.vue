@@ -15,7 +15,6 @@ export default {
             totalScores: 0,
             activePlayers: 0,
             gamesCount: 0,
-            currentGameId: null,
             gameService: new GameService()
         };
     },
@@ -26,9 +25,6 @@ export default {
         onScoreSubmitted() {
             this.refreshTrigger++;
             this.loadStats();
-        },
-        onTabChanged(event) {
-            this.currentGameId = event.gameId;
         },
         async loadStats() {
             try {
@@ -68,7 +64,7 @@ export default {
 
             <!-- Leaderboards -->
             <div class="lg:col-span-2">
-                <GameTabs :refreshTrigger="refreshTrigger" @tab-changed="onTabChanged" />
+                <GameTabs :refreshTrigger="refreshTrigger" />
             </div>
         </div>
 

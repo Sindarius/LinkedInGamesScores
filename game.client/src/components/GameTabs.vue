@@ -1,11 +1,15 @@
 <script>
+import { ref, onMounted, computed } from 'vue';
+import { useToast } from 'primevue/usetoast';
 import { GameService } from '@/services/gameService.js';
 import DailyLeaderboard from './DailyLeaderboard.vue';
+import AllGamesChampions from './AllGamesChampions.vue';
 
 export default {
     name: 'GameTabs',
     components: {
-        DailyLeaderboard
+        DailyLeaderboard,
+        AllGamesChampions
     },
     props: {
         refreshTrigger: {
@@ -13,62 +17,95 @@ export default {
             default: 0
         }
     },
-    data() {
-        return {
-            games: [],
-            activeIndex: 0,
-            gameService: new GameService()
-        };
-    },
-    async mounted() {
-        await this.loadGames();
-    },
-    methods: {
-        async loadGames() {
+    setup() {
+        const toast = useToast();
+        const gameService = new GameService();
+        const games = ref([]);
+
+        // Sort games alphabetically by name
+        const sortedGames = computed(() => {
+            return [...games.value].sort((a, b) => a.name.localeCompare(b.name));
+        });
+
+        const loadGames = async () => {
             try {
-                this.games = await this.gameService.getGames();
+                games.value = await gameService.getGames();
             } catch (error) {
                 console.error('Error loading games:', error);
-                this.$toast.add({
+                toast.add({
                     severity: 'error',
                     summary: 'Error',
                     detail: 'Failed to load games'
                 });
             }
-        },
-        onTabChange(event) {
-            this.activeIndex = event.index;
-            this.$emit('tab-changed', {
-                index: event.index,
-                gameId: event.index === 0 ? null : this.games[event.index - 1]?.id
-            });
-        }
+        };
+
+        onMounted(async () => {
+            await loadGames();
+        });
+
+        return {
+            games,
+            sortedGames
+        };
     }
 };
 </script>
 
 <template>
-    <div class="game-tabs">
-        <Tabs @tab-change="onTabChange">
-            <TabList>
-                <Tab>All Games</Tab>
-                <Tab v-for="game in games" :key="game.id">{{ game.name }}</Tab>
-            </TabList>
-            <TabPanels>
-                <TabPanel>
-                    <DailyLeaderboard :gameId="null" :refreshTrigger="refreshTrigger" />
-                </TabPanel>
+    <div class="game-cards">
+        <!-- All Games Card -->
+        <Card class="mb-6">
+            <template #title>
+                <div class="flex items-center gap-2">
+                    <i class="pi pi-chart-bar text-primary"></i>
+                    All Games Champions
+                </div>
+            </template>
+            <template #subtitle>
+                <span class="text-sm text-gray-600"> First place players from each game </span>
+            </template>
+            <template #content>
+                <AllGamesChampions :refreshTrigger="refreshTrigger" />
+            </template>
+        </Card>
 
-                <TabPanel v-for="game in games" :key="game.id">
+        <!-- Individual Game Cards -->
+        <div class="grid grid-cols-1 gap-6">
+            <Card v-for="game in sortedGames" :key="game.id" class="game-card">
+                <template #title>
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-trophy text-primary"></i>
+                        {{ game.name }}
+                    </div>
+                </template>
+                <template #subtitle>
+                    <span class="text-sm text-gray-600">
+                        {{ game.scoringType === 1 ? 'Scored by number of guesses (lower is better)' : 'Scored by completion time (faster is better)' }}
+                    </span>
+                </template>
+                <template #content>
                     <DailyLeaderboard :gameId="game.id" :refreshTrigger="refreshTrigger" />
-                </TabPanel>
-            </TabPanels>
-        </Tabs>
+                </template>
+            </Card>
+        </div>
     </div>
 </template>
 
 <style scoped>
-.game-tabs {
+.game-cards {
     @apply w-full;
+}
+
+.game-card {
+    @apply transition-shadow duration-200;
+}
+
+.game-card:hover {
+    @apply shadow-lg;
+}
+
+.text-primary {
+    @apply text-blue-600;
 }
 </style>

@@ -15,7 +15,10 @@
       "Bash(npm run dev:*)",
       "Bash(dotnet run)",
       "Bash(npm install:*)",
-      "Bash(timeout 10 npm run dev)"
+      "Bash(timeout 10 npm run dev)",
+      "Bash(npm run lint)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 8 npm run dev)"
     ],
     "deny": []
   }
