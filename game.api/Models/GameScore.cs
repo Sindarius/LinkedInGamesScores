@@ -9,6 +9,8 @@ namespace game.api.Models
         public TimeSpan? CompletionTime { get; set; }
         public DateTime DateAchieved { get; set; }
         public string? LinkedInProfileUrl { get; set; }
+        public byte[]? ScoreImage { get; set; }
+        public string? ImageContentType { get; set; }
         public Game? Game { get; set; }
 
         public int Score => Game?.ScoringType == ScoringType.Time 

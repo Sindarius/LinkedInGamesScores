@@ -18,17 +18,6 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
     });
 
-// Add CORS - Allow all origins
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll",
-        policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
-});
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -65,7 +54,9 @@ if (app.Environment.IsDevelopment())
 // Remove HTTPS redirection for Docker compatibility
 // app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+// Configure static files to serve Vue.js app
+app.UseDefaultFiles();
+app.UseStaticFiles();
 
 app.UseAuthorization();
 

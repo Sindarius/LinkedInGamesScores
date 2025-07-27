@@ -1,9 +1,4 @@
-const API_BASE_URL =
-    window.location.hostname === 'localhost' && window.location.port === '3000'
-        ? 'http://localhost:5000/api' // Docker environment
-        : process.env.NODE_ENV === 'production'
-          ? 'http://localhost:5000/api'
-          : 'https://localhost:7036/api';
+const API_BASE_URL = '/api';
 
 export class GameService {
     async getGames() {
@@ -71,6 +66,61 @@ export class GameService {
             throw new Error('Failed to submit score');
         }
         return await response.json();
+    }
+
+    async submitScoreWithImage(gameScoreData, imageFile) {
+        const formData = new FormData();
+        formData.append('GameId', gameScoreData.gameId);
+        formData.append('PlayerName', gameScoreData.playerName);
+        
+        if (gameScoreData.guessCount !== undefined && gameScoreData.guessCount !== null) {
+            formData.append('GuessCount', gameScoreData.guessCount);
+        }
+        
+        if (gameScoreData.completionTime) {
+            formData.append('CompletionTime', gameScoreData.completionTime);
+        }
+        
+        if (gameScoreData.linkedInProfileUrl) {
+            formData.append('LinkedInProfileUrl', gameScoreData.linkedInProfileUrl);
+        }
+        
+        if (imageFile) {
+            formData.append('ScoreImage', imageFile);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/gamescores/with-image`, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to submit score with image');
+        }
+        return await response.json();
+    }
+
+    async getScoreImage(scoreId) {
+        const response = await fetch(`${API_BASE_URL}/gamescores/${scoreId}/image`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                return null; // No image available
+            }
+            throw new Error('Failed to fetch score image');
+        }
+        return response.blob();
+    }
+
+    async getScoreImageThumbnail(scoreId, width = 200, height = 150) {
+        const response = await fetch(`${API_BASE_URL}/gamescores/${scoreId}/image/thumbnail?width=${width}&height=${height}`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                return null; // No image available
+            }
+            throw new Error('Failed to fetch score image thumbnail');
+        }
+        return response.blob();
     }
 
     async getScoresByDateRange(gameId, startDate, endDate) {

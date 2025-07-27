@@ -101,12 +101,18 @@ namespace game.api.Migrations
                     b.Property<int?>("GuessCount")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ImageContentType")
+                        .HasColumnType("text");
+
                     b.Property<string>("LinkedInProfileUrl")
                         .HasColumnType("text");
 
                     b.Property<string>("PlayerName")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<byte[]>("ScoreImage")
+                        .HasColumnType("bytea");
 
                     b.HasKey("Id");
 

@@ -12,5 +12,6 @@ namespace game.api.Models
         public string? LinkedInProfileUrl { get; set; }
         public string? GameName { get; set; }
         public ScoringType ScoringType { get; set; }
+        public bool HasScoreImage { get; set; }
     }
 }

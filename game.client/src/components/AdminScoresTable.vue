@@ -13,7 +13,6 @@ const loading = ref(false);
 const newScoreDialog = ref(false);
 const deleteScoreDialog = ref(false);
 const selectedScore = ref(null);
-const timeInput = ref('');
 const newScoreTimeInput = ref('');
 
 const newScore = ref({
@@ -87,11 +86,75 @@ const formatTime = (timeString) => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
+const formatTimeForEdit = (timeString) => {
+    if (!timeString) return '';
+    // Return formatted time for editing
+    return formatTime(timeString) === '-' ? '' : formatTime(timeString);
+};
+
 const updateTimeFromInput = (data, value) => {
-    timeInput.value = value;
-    if (value && value.match(/^\d{2}:\d{2}:\d{2}$/)) {
-        data.completionTime = value;
+    // Update the data directly when input changes
+    if (!value || value === '') {
+        // Allow clearing the time
+        data.completionTime = null;
+        return;
     }
+
+    // Handle HH:MM:SS format
+    if (value.match(/^\d{1,2}:\d{2}:\d{2}$/)) {
+        const parts = value.split(':');
+        const hours = parseInt(parts[0]);
+        const minutes = parseInt(parts[1]);
+        const seconds = parseInt(parts[2]);
+        
+        if (minutes < 60 && seconds < 60) {
+            const formattedValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            data.completionTime = formattedValue;
+            return;
+        }
+    }
+    
+    // Handle MM:SS format (assume 0 hours)
+    if (value.match(/^\d{1,2}:\d{2}$/)) {
+        const parts = value.split(':');
+        const minutes = parseInt(parts[0]);
+        const seconds = parseInt(parts[1]);
+        
+        if (minutes < 60 && seconds < 60) {
+            const formattedValue = `00:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            data.completionTime = formattedValue;
+            return;
+        }
+    }
+    
+    // Keep the raw input for validation feedback
+    data.completionTime = value;
+};
+
+const isInvalidTimeFormat = (timeString) => {
+    if (!timeString) return false;
+    
+    // Valid formats: HH:MM:SS or MM:SS
+    const validHHMMSS = /^\d{1,2}:\d{2}:\d{2}$/.test(timeString);
+    const validMMSS = /^\d{1,2}:\d{2}$/.test(timeString);
+    
+    if (!validHHMMSS && !validMMSS) return true;
+    
+    const parts = timeString.split(':');
+    if (validHHMMSS) {
+        const hours = parseInt(parts[0]);
+        const minutes = parseInt(parts[1]);
+        const seconds = parseInt(parts[2]);
+        return minutes >= 60 || seconds >= 60;
+    }
+    
+    if (validMMSS) {
+        const minutes = parseInt(parts[0]);
+        const seconds = parseInt(parts[1]);
+        return minutes >= 60 || seconds >= 60;
+    }
+    
+    return false;
 };
 
 const openNewScoreDialog = () => {
@@ -195,7 +258,12 @@ const formatDate = (dateString) => {
                     {{ formatTime(data.completionTime) }}
                 </template>
                 <template #editor="{ data }">
-                    <InputText v-model="timeInput" placeholder="HH:MM:SS" @update:modelValue="updateTimeFromInput(data, $event)" />
+                    <InputText 
+                        :model-value="formatTimeForEdit(data.completionTime)" 
+                        placeholder="HH:MM:SS or MM:SS" 
+                        @update:model-value="updateTimeFromInput(data, $event)"
+                        :class="{ 'p-invalid': isInvalidTimeFormat(data.completionTime) }"
+                    />
                 </template>
             </Column>
 

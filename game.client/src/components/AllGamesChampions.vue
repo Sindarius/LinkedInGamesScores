@@ -15,7 +15,7 @@ export default {
         const toast = useToast();
         const gameService = new GameService();
         const champions = ref([]);
-        const selectedDate = ref(null);
+        const selectedDate = ref(new Date()); // Initialize to today's date
         const isLoading = ref(false);
 
         const sortedChampions = computed(() => {
@@ -106,6 +106,11 @@ export default {
             }
         };
 
+        const setToday = () => {
+            selectedDate.value = new Date();
+            loadChampions();
+        };
+
         onMounted(async () => {
             await loadChampions();
         });
@@ -125,7 +130,8 @@ export default {
             loadChampions,
             formatDate,
             formatTime,
-            formatCompletionTime
+            formatCompletionTime,
+            setToday
         };
     }
 };
@@ -136,7 +142,8 @@ export default {
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold">Daily Champions</h3>
             <div class="flex items-center space-x-2">
-                <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Today" @date-select="loadChampions" class="w-40" />
+                <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Select date" @date-select="loadChampions" class="w-40" />
+                <Button label="Today" @click="setToday" size="small" severity="secondary" />
                 <Button icon="pi pi-refresh" @click="loadChampions" :loading="isLoading" size="small" />
             </div>
         </div>

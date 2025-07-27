@@ -19,11 +19,11 @@ services:
       timeout: 10s
       retries: 3
 
-  api:
+  app:
     build:
-      context: ./game.api
-      dockerfile: Dockerfile
-    container_name: linkedin-game-scores-api
+      context: .
+      dockerfile: game.api/Dockerfile
+    container_name: linkedin-game-scores-app
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:80
@@ -33,19 +33,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - game-scores-network
-    restart: unless-stopped
-
-  client:
-    build:
-      context: ./game.client
-      dockerfile: Dockerfile
-    container_name: linkedin-game-scores-client
-    ports:
-      - "3000:80"
-    depends_on:
-      - api
     networks:
       - game-scores-network
     restart: unless-stopped

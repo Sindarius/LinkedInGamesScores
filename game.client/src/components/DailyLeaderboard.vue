@@ -16,11 +16,31 @@ export default {
     data() {
         return {
             scores: [],
-            selectedDate: null,
+            selectedDate: new Date(), // Initialize to today's date
             selectedGame: null,
             isLoading: false,
-            gameService: new GameService()
+            gameService: new GameService(),
+            showImageDialog: false,
+            selectedImageUrl: null,
+            imageLoading: false,
+            hoverThumbnail: {
+                visible: false,
+                url: null,
+                x: 0,
+                y: 0
+            },
+            isMobile: false
         };
+    },
+    mounted() {
+        // Detect if device is mobile
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                        window.innerWidth <= 768;
+
+        // Add event listener for mobile orientation changes
+        window.addEventListener('resize', () => {
+            this.isMobile = window.innerWidth <= 768;
+        });
     },
     watch: {
         gameId: {
@@ -118,6 +138,77 @@ export default {
             } else {
                 return `${seconds}s`;
             }
+        },
+        async viewScoreImage(scoreId) {
+            this.imageLoading = true;
+            this.showImageDialog = true;
+
+            try {
+                const imageBlob = await this.gameService.getScoreImage(scoreId);
+                if (imageBlob) {
+                    this.selectedImageUrl = URL.createObjectURL(imageBlob);
+                } else {
+                    this.$toast.add({
+                        severity: 'warn',
+                        summary: 'No Image',
+                        detail: 'No screenshot available for this score'
+                    });
+                    this.showImageDialog = false;
+                }
+            } catch (error) {
+                console.error('Error loading image:', error);
+                this.$toast.add({
+                    severity: 'error',
+                    summary: 'Error',
+                    detail: 'Failed to load score image'
+                });
+                this.showImageDialog = false;
+            } finally {
+                this.imageLoading = false;
+            }
+        },
+        closeImageDialog() {
+            this.showImageDialog = false;
+            if (this.selectedImageUrl) {
+                URL.revokeObjectURL(this.selectedImageUrl);
+                this.selectedImageUrl = null;
+            }
+        },
+        async handleImageHover(scoreId, event) {
+            if (this.isMobile) return; // Don't show hover on mobile
+
+            try {
+                const thumbnailBlob = await this.gameService.getScoreImageThumbnail(scoreId, 400, 300);
+                if (thumbnailBlob) {
+                    this.hoverThumbnail.url = URL.createObjectURL(thumbnailBlob);
+                    this.hoverThumbnail.x = event.clientX + 10;
+                    this.hoverThumbnail.y = event.clientY + 10;
+                    this.hoverThumbnail.visible = true;
+                }
+            } catch (error) {
+                console.error('Error loading thumbnail:', error);
+            }
+        },
+        handleImageHoverOut() {
+            if (this.hoverThumbnail.url) {
+                URL.revokeObjectURL(this.hoverThumbnail.url);
+            }
+            this.hoverThumbnail.visible = false;
+            this.hoverThumbnail.url = null;
+        },
+        handleImageClick(scoreId) {
+            if (this.isMobile) {
+                // On mobile, open popup dialog
+                this.viewScoreImage(scoreId);
+            }
+            // On desktop, hover handles the preview, click also opens dialog
+            else {
+                this.viewScoreImage(scoreId);
+            }
+        },
+        setToday() {
+            this.selectedDate = new Date();
+            this.loadLeaderboard();
         }
     }
 };
@@ -129,7 +220,8 @@ export default {
             <div class="flex justify-between items-center">
                 <span>{{ selectedGame?.name || 'All Games' }} Leaderboard</span>
                 <div class="flex items-center space-x-2">
-                    <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Today" @date-select="loadLeaderboard" class="w-40" />
+                    <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Select date" @date-select="loadLeaderboard" class="w-40" />
+                    <Button label="Today" @click="setToday" size="small" severity="secondary" />
                     <Button icon="pi pi-refresh" @click="loadLeaderboard" :loading="isLoading" size="small" />
                 </div>
             </div>
@@ -168,6 +260,19 @@ export default {
                         </template>
                     </Column>
 
+                    <Column header="Screenshot" class="w-24 text-center">
+                        <template #body="{ data }">
+                            <i v-if="data.hasScoreImage"
+                               class="pi pi-image text-green-600 cursor-pointer hover:text-green-700 transition-colors"
+                               @click="handleImageClick(data.id)"
+                               @mouseenter="handleImageHover(data.id, $event)"
+                               @mouseleave="handleImageHoverOut"
+                               :title="isMobile ? 'Tap to view screenshot' : 'Hover to preview, click to view full size'"
+                            ></i>
+                            <i v-else class="pi pi-minus text-gray-400" title="No screenshot"></i>
+                        </template>
+                    </Column>
+
                     <Column field="score" class="text-right">
                         <template #header>
                             <span v-if="selectedGame?.scoringType === 1">Guesses</span>
@@ -190,6 +295,47 @@ export default {
             </div>
         </template>
     </Card>
+
+    <!-- Score Image Dialog -->
+    <Dialog
+        v-model:visible="showImageDialog"
+        header="Score Screenshot"
+        :modal="true"
+        :closable="true"
+        :dismissableMask="true"
+        @hide="closeImageDialog"
+        :style="{ width: 'auto', maxWidth: '95vw', maxHeight: '95vh' }"
+        :contentStyle="{ padding: '0' }"
+    >
+        <div v-if="imageLoading" class="flex justify-center py-8">
+            <ProgressSpinner />
+        </div>
+        <div v-else-if="selectedImageUrl" class="flex justify-center items-center">
+            <img
+                :src="selectedImageUrl"
+                alt="Score screenshot"
+                class="max-w-full max-h-[90vh] object-contain"
+                style="display: block;"
+            />
+        </div>
+    </Dialog>
+
+    <!-- Hover Thumbnail (Desktop only) -->
+    <div
+        v-if="hoverThumbnail.visible && hoverThumbnail.url && !isMobile"
+        class="fixed z-50 pointer-events-none border-2 border-gray-300 rounded shadow-lg bg-white p-1"
+        :style="{
+            left: hoverThumbnail.x + 'px',
+            top: hoverThumbnail.y + 'px',
+            maxWidth: '400px'
+        }"
+    >
+        <img
+            :src="hoverThumbnail.url"
+            alt="Score thumbnail"
+            class="max-w-full max-h-32 object-contain"
+        />
+    </div>
 </template>
 
 <style scoped>

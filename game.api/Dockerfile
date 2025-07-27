@@ -1,17 +1,17 @@
-# Use the official .NET SDK image for building
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Build Vue.js frontend
+FROM node:18 AS client-build
+WORKDIR /client
+COPY game.client/package*.json ./
+RUN npm ci
+COPY game.client/ ./
+RUN npm run build
 
-# Set the working directory
+# Build .NET API
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS api-build
 WORKDIR /src
-
-# Copy the project file and restore dependencies
-COPY *.csproj ./
+COPY game.api/*.csproj ./
 RUN dotnet restore
-
-# Copy the rest of the source code
-COPY . ./
-
-# Build the application
+COPY game.api/ ./
 RUN dotnet publish -c Release -o /app/publish
 
 # Use the official .NET runtime image for the final stage
@@ -20,8 +20,11 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 # Set the working directory
 WORKDIR /app
 
-# Copy the published application from the build stage
-COPY --from=build /app/publish ./
+# Copy the published API from the build stage
+COPY --from=api-build /app/publish ./
+
+# Copy the built Vue.js app to wwwroot for static file serving
+COPY --from=client-build /client/dist ./wwwroot
 
 # Expose the port the app runs on
 EXPOSE 80

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using game.api.Data;
 using game.api.Models;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 
 namespace game.api.Controllers
 {
@@ -40,7 +42,8 @@ namespace game.api.Controllers
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = gs.Game!.Name,
-                    ScoringType = gs.Game!.ScoringType
+                    ScoringType = gs.Game!.ScoringType,
+                    HasScoreImage = gs.ScoreImage != null
                 })
                 .ToListAsync();
 
@@ -66,7 +69,8 @@ namespace game.api.Controllers
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = gs.Game!.Name,
-                    ScoringType = gs.Game!.ScoringType
+                    ScoringType = gs.Game!.ScoringType,
+                    HasScoreImage = gs.ScoreImage != null
                 })
                 .FirstOrDefaultAsync();
 
@@ -105,7 +109,8 @@ namespace game.api.Controllers
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = game.Name,
-                    ScoringType = game.ScoringType
+                    ScoringType = game.ScoringType,
+                    HasScoreImage = gs.ScoreImage != null
                 })
                 .OrderBy(gs => game.ScoringType == ScoringType.Time ? gs.Score : 0)
                 .ThenByDescending(gs => game.ScoringType == ScoringType.Guesses ? gs.Score : 0)
@@ -141,7 +146,8 @@ namespace game.api.Controllers
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = game.Name,
-                    ScoringType = game.ScoringType
+                    ScoringType = game.ScoringType,
+                    HasScoreImage = gs.ScoreImage != null
                 })
                 .OrderBy(gs => game.ScoringType == ScoringType.Time ? gs.Score : 0)
                 .ThenByDescending(gs => game.ScoringType == ScoringType.Guesses ? gs.Score : 0)
@@ -149,6 +155,89 @@ namespace game.api.Controllers
                 .ToList();
 
             return gameScoreDtos;
+        }
+
+        [HttpPost("with-image")]
+        public async Task<ActionResult<GameScore>> PostGameScoreWithImage([FromForm] GameScoreWithImageDto dto)
+        {
+            var gameScore = new GameScore
+            {
+                GameId = dto.GameId,
+                PlayerName = dto.PlayerName,
+                GuessCount = dto.GuessCount,
+                CompletionTime = dto.CompletionTime,
+                LinkedInProfileUrl = dto.LinkedInProfileUrl,
+                DateAchieved = DateTime.UtcNow
+            };
+
+            if (dto.ScoreImage != null && dto.ScoreImage.Length > 0)
+            {
+                var allowedContentTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
+                if (!allowedContentTypes.Contains(dto.ScoreImage.ContentType.ToLower()))
+                {
+                    return BadRequest("Only JPEG, PNG, and GIF images are allowed.");
+                }
+
+                if (dto.ScoreImage.Length > 5 * 1024 * 1024) // 5MB limit
+                {
+                    return BadRequest("Image size cannot exceed 5MB.");
+                }
+
+                using var memoryStream = new MemoryStream();
+                await dto.ScoreImage.CopyToAsync(memoryStream);
+                gameScore.ScoreImage = memoryStream.ToArray();
+                gameScore.ImageContentType = dto.ScoreImage.ContentType;
+            }
+
+            _context.GameScores.Add(gameScore);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetGameScore), new { id = gameScore.Id }, gameScore);
+        }
+
+        [HttpGet("{id}/image")]
+        public async Task<IActionResult> GetGameScoreImage(int id)
+        {
+            var gameScore = await _context.GameScores.FindAsync(id);
+            if (gameScore == null || gameScore.ScoreImage == null)
+            {
+                return NotFound();
+            }
+
+            return File(gameScore.ScoreImage, gameScore.ImageContentType ?? "image/jpeg");
+        }
+
+        [HttpGet("{id}/image/thumbnail")]
+        public async Task<IActionResult> GetGameScoreImageThumbnail(int id, [FromQuery] int width = 200, [FromQuery] int height = 150)
+        {
+            var gameScore = await _context.GameScores.FindAsync(id);
+            if (gameScore == null || gameScore.ScoreImage == null)
+            {
+                return NotFound();
+            }
+
+            try
+            {
+                using var image = Image.Load(gameScore.ScoreImage);
+                
+                // Resize image maintaining aspect ratio
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Size = new Size(width, height),
+                    Mode = ResizeMode.Max // Maintains aspect ratio, fits within bounds
+                }));
+
+                using var output = new MemoryStream();
+                await image.SaveAsJpegAsync(output);
+                
+                return File(output.ToArray(), "image/jpeg");
+            }
+            catch (Exception ex)
+            {
+                // Log the error (in production, you'd use proper logging)
+                Console.WriteLine($"Error generating thumbnail: {ex.Message}");
+                return StatusCode(500, "Error generating thumbnail");
+            }
         }
 
         [HttpPost]

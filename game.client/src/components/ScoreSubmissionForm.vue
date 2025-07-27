@@ -17,6 +17,8 @@ export default {
         const guessCount = ref(null);
         const minutes = ref(null);
         const seconds = ref(null);
+        const scoreImage = ref(null);
+        const imagePreview = ref(null);
         const isSubmitting = ref(false);
         const showErrors = ref(false);
 
@@ -35,6 +37,46 @@ export default {
             playerStore.loadFromStorage();
             await loadGames();
         });
+
+        const handleImageUpload = (event) => {
+            const file = event.files?.[0] || event.target.files?.[0];
+            if (file) {
+                // Validate file type
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+                if (!allowedTypes.includes(file.type)) {
+                    toast.add({
+                        severity: 'error',
+                        summary: 'Invalid File Type',
+                        detail: 'Only JPEG, PNG, and GIF images are allowed'
+                    });
+                    return;
+                }
+
+                // Validate file size (5MB limit)
+                if (file.size > 5 * 1024 * 1024) {
+                    toast.add({
+                        severity: 'error',
+                        summary: 'File Too Large',
+                        detail: 'Image size cannot exceed 5MB'
+                    });
+                    return;
+                }
+
+                scoreImage.value = file;
+                
+                // Create preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        const removeImage = () => {
+            scoreImage.value = null;
+            imagePreview.value = null;
+        };
 
         const loadGames = async () => {
             try {
@@ -76,7 +118,11 @@ export default {
                         .padStart(2, '0')}:${(totalSeconds % 60).toString().padStart(2, '0')}`;
                 }
 
-                await gameService.submitScore(gameScore);
+                if (scoreImage.value) {
+                    await gameService.submitScoreWithImage(gameScore, scoreImage.value);
+                } else {
+                    await gameService.submitScore(gameScore);
+                }
 
                 toast.add({
                     severity: 'success',
@@ -118,6 +164,8 @@ export default {
             guessCount.value = null;
             minutes.value = null;
             seconds.value = null;
+            scoreImage.value = null;
+            imagePreview.value = null;
             showErrors.value = false;
         };
 
@@ -128,12 +176,16 @@ export default {
             guessCount,
             minutes,
             seconds,
+            scoreImage,
+            imagePreview,
             linkedinUrl,
             isSubmitting,
             showErrors,
             submitScore,
             isFormValid,
-            clearForm
+            clearForm,
+            handleImageUpload,
+            removeImage
         };
     }
 };
@@ -174,6 +226,33 @@ export default {
                 <div class="field">
                     <label for="linkedinUrl">LinkedIn Profile URL (Optional)</label>
                     <InputText id="linkedinUrl" v-model="linkedinUrl" placeholder="https://linkedin.com/in/yourprofile" class="w-full" />
+                </div>
+
+                <div class="field">
+                    <label for="scoreImage">Score Screenshot (Optional)</label>
+                    <FileUpload 
+                        id="scoreImage"
+                        mode="basic" 
+                        accept="image/jpeg,image/jpg,image/png,image/gif"
+                        :maxFileSize="5000000"
+                        @select="handleImageUpload"
+                        :auto="false"
+                        chooseLabel="Choose Image"
+                        class="mb-2"
+                    />
+                    
+                    <div v-if="imagePreview" class="mt-2">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm text-gray-600">Image Preview:</span>
+                            <Button 
+                                icon="pi pi-times" 
+                                class="p-button-rounded p-button-text p-button-sm"
+                                @click="removeImage"
+                                aria-label="Remove image"
+                            />
+                        </div>
+                        <img :src="imagePreview" alt="Score preview" class="max-w-full max-h-48 object-contain border rounded" />
+                    </div>
                 </div>
 
                 <div class="flex justify-end space-x-2">
