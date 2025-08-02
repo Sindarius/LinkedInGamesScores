@@ -21,7 +21,9 @@
       "Bash(timeout 8 npm run dev)",
       "Bash(find:*)",
       "Bash(dotnet ef database:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(npx playwright:*)",
+      "Bash(npm test)"
     ],
     "deny": []
   }

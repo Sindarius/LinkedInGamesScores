@@ -2,12 +2,22 @@
 import ScoreSubmissionForm from '@/components/ScoreSubmissionForm.vue';
 import GameTabs from '@/components/GameTabs.vue';
 import { GameService } from '@/services/gameService.js';
+import { useDateStore } from '@/stores/dateStore.js';
 
 export default {
     name: 'GameScores',
     components: {
         ScoreSubmissionForm,
         GameTabs
+    },
+    setup() {
+        const { selectedDate, setSelectedDate, setToday, formatSelectedDate } = useDateStore();
+        return {
+            selectedDate,
+            setSelectedDate,
+            setToday,
+            formatSelectedDate
+        };
     },
     data() {
         return {
@@ -25,6 +35,10 @@ export default {
         onScoreSubmitted() {
             this.refreshTrigger++;
             this.loadStats();
+        },
+        onDateChange() {
+            // Trigger refresh when date changes
+            this.refreshTrigger++;
         },
         async loadStats() {
             try {
@@ -52,8 +66,28 @@ export default {
 <template>
     <div class="game-scores-page">
         <div class="mb-6">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">LinkedIn Game Scores</h1>
-            <p class="text-gray-600">Track your daily scores and compete with others!</p>
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900 mb-2">LinkedIn Game Scores</h1>
+                    <p class="text-gray-600">Track your daily scores and compete with others!</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="text-sm text-gray-600">Viewing scores for:</div>
+                    <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Select date" @date-select="onDateChange" class="w-40" />
+                    <Button
+                        label="Today"
+                        @click="
+                            setToday();
+                            onDateChange();
+                        "
+                        severity="secondary"
+                        class="px-4 py-2"
+                    />
+                </div>
+            </div>
+            <div class="text-center text-lg font-medium text-blue-600 mb-4">
+                {{ formatSelectedDate() }}
+            </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

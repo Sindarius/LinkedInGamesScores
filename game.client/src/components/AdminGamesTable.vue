@@ -111,7 +111,7 @@ const formatDate = (dateString) => {
     <div>
         <div class="flex justify-content-between align-items-center mb-4">
             <h6 class="m-0">Games Management</h6>
-            <Button label="Add Game" icon="pi pi-plus" @click="openNewGameDialog" />
+            <Button label="Add Game" icon="pi pi-plus" class="px-4 py-2" @click="openNewGameDialog" />
         </div>
 
         <DataTable v-model:editingRows="editingRows" :value="games" editMode="row" dataKey="id" @row-edit-save="onRowEditSave" @row-edit-cancel="onRowEditCancel" :loading="loading" class="p-datatable-gridlines">
@@ -167,7 +167,7 @@ const formatDate = (dateString) => {
 
             <Column style="width: 80px">
                 <template #body="{ data }">
-                    <Button icon="pi pi-trash" class="p-button-rounded p-button-danger p-button-text" @click="confirmDeleteGame(data)" />
+                    <Button icon="pi pi-trash" class="p-button-rounded p-button-danger p-button-text" size="small" @click="confirmDeleteGame(data)" aria-label="Delete game" />
                 </template>
             </Column>
         </DataTable>

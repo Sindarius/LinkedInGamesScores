@@ -106,54 +106,54 @@ const updateTimeFromInput = (data, value) => {
         const hours = parseInt(parts[0]);
         const minutes = parseInt(parts[1]);
         const seconds = parseInt(parts[2]);
-        
+
         if (minutes < 60 && seconds < 60) {
             const formattedValue = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             data.completionTime = formattedValue;
             return;
         }
     }
-    
+
     // Handle MM:SS format (assume 0 hours)
     if (value.match(/^\d{1,2}:\d{2}$/)) {
         const parts = value.split(':');
         const minutes = parseInt(parts[0]);
         const seconds = parseInt(parts[1]);
-        
+
         if (minutes < 60 && seconds < 60) {
             const formattedValue = `00:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             data.completionTime = formattedValue;
             return;
         }
     }
-    
+
     // Keep the raw input for validation feedback
     data.completionTime = value;
 };
 
 const isInvalidTimeFormat = (timeString) => {
     if (!timeString) return false;
-    
+
     // Valid formats: HH:MM:SS or MM:SS
     const validHHMMSS = /^\d{1,2}:\d{2}:\d{2}$/.test(timeString);
     const validMMSS = /^\d{1,2}:\d{2}$/.test(timeString);
-    
+
     if (!validHHMMSS && !validMMSS) return true;
-    
+
     const parts = timeString.split(':');
     if (validHHMMSS) {
-        const hours = parseInt(parts[0]);
+        parseInt(parts[0]); // hours (validation only)
         const minutes = parseInt(parts[1]);
         const seconds = parseInt(parts[2]);
         return minutes >= 60 || seconds >= 60;
     }
-    
+
     if (validMMSS) {
         const minutes = parseInt(parts[0]);
         const seconds = parseInt(parts[1]);
         return minutes >= 60 || seconds >= 60;
     }
-    
+
     return false;
 };
 
@@ -216,7 +216,7 @@ const formatDate = (dateString) => {
     <div>
         <div class="flex justify-content-between align-items-center mb-4">
             <h6 class="m-0">Scores Management</h6>
-            <Button label="Add Score" icon="pi pi-plus" @click="openNewScoreDialog" />
+            <Button label="Add Score" icon="pi pi-plus" class="px-4 py-2" @click="openNewScoreDialog" />
         </div>
 
         <DataTable v-model:editingRows="editingRows" :value="scores" editMode="row" dataKey="id" @row-edit-save="onRowEditSave" @row-edit-cancel="onRowEditCancel" :loading="loading" :paginator="true" :rows="20" class="p-datatable-gridlines">
@@ -258,12 +258,7 @@ const formatDate = (dateString) => {
                     {{ formatTime(data.completionTime) }}
                 </template>
                 <template #editor="{ data }">
-                    <InputText 
-                        :model-value="formatTimeForEdit(data.completionTime)" 
-                        placeholder="HH:MM:SS or MM:SS" 
-                        @update:model-value="updateTimeFromInput(data, $event)"
-                        :class="{ 'p-invalid': isInvalidTimeFormat(data.completionTime) }"
-                    />
+                    <InputText :model-value="formatTimeForEdit(data.completionTime)" placeholder="HH:MM:SS or MM:SS" @update:model-value="updateTimeFromInput(data, $event)" :class="{ 'p-invalid': isInvalidTimeFormat(data.completionTime) }" />
                 </template>
             </Column>
 
@@ -296,7 +291,7 @@ const formatDate = (dateString) => {
 
             <Column style="width: 80px">
                 <template #body="{ data }">
-                    <Button icon="pi pi-trash" class="p-button-rounded p-button-danger p-button-text" @click="confirmDeleteScore(data)" />
+                    <Button icon="pi pi-trash" class="p-button-rounded p-button-danger p-button-text" size="small" @click="confirmDeleteScore(data)" aria-label="Delete score" />
                 </template>
             </Column>
         </DataTable>

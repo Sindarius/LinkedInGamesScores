@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using game.api.Data;
 using game.api.Models;
+using game.api.Attributes;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 
@@ -251,6 +252,7 @@ namespace game.api.Controllers
         }
 
         [HttpPut("{id}")]
+        [AdminAuthorize]
         public async Task<IActionResult> PutGameScore(int id, GameScore gameScore)
         {
             if (id != gameScore.Id)
@@ -280,6 +282,7 @@ namespace game.api.Controllers
         }
 
         [HttpDelete("{id}")]
+        [AdminAuthorize]
         public async Task<IActionResult> DeleteGameScore(int id)
         {
             var gameScore = await _context.GameScores.FindAsync(id);

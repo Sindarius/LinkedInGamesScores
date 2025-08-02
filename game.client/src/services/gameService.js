@@ -72,19 +72,19 @@ export class GameService {
         const formData = new FormData();
         formData.append('GameId', gameScoreData.gameId);
         formData.append('PlayerName', gameScoreData.playerName);
-        
+
         if (gameScoreData.guessCount !== undefined && gameScoreData.guessCount !== null) {
             formData.append('GuessCount', gameScoreData.guessCount);
         }
-        
+
         if (gameScoreData.completionTime) {
             formData.append('CompletionTime', gameScoreData.completionTime);
         }
-        
+
         if (gameScoreData.linkedInProfileUrl) {
             formData.append('LinkedInProfileUrl', gameScoreData.linkedInProfileUrl);
         }
-        
+
         if (imageFile) {
             formData.append('ScoreImage', imageFile);
         }

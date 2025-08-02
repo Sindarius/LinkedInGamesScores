@@ -34,8 +34,7 @@ export default {
     },
     mounted() {
         // Detect if device is mobile
-        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                        window.innerWidth <= 768;
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768;
 
         // Add event listener for mobile orientation changes
         window.addEventListener('resize', () => {
@@ -44,13 +43,16 @@ export default {
     },
     watch: {
         gameId: {
-            handler(newGameId) {
+            handler() {
                 this.loadGameInfo();
                 this.loadLeaderboard();
             },
             immediate: true
         },
         refreshTrigger() {
+            this.loadLeaderboard();
+        },
+        selectedDate() {
             this.loadLeaderboard();
         }
     },
@@ -205,10 +207,6 @@ export default {
             else {
                 this.viewScoreImage(scoreId);
             }
-        },
-        setToday() {
-            this.selectedDate = new Date();
-            this.loadLeaderboard();
         }
     }
 };
@@ -219,10 +217,8 @@ export default {
         <template #title>
             <div class="flex justify-between items-center">
                 <span>{{ selectedGame?.name || 'All Games' }} Leaderboard</span>
-                <div class="flex items-center space-x-2">
-                    <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Select date" @date-select="loadLeaderboard" class="w-40" />
-                    <Button label="Today" @click="setToday" size="small" severity="secondary" />
-                    <Button icon="pi pi-refresh" @click="loadLeaderboard" :loading="isLoading" size="small" />
+                <div class="flex items-center gap-3">
+                    <Button icon="pi pi-refresh" @click="loadLeaderboard" :loading="isLoading" class="px-3 py-2" aria-label="Refresh leaderboard" />
                 </div>
             </div>
         </template>
@@ -262,12 +258,13 @@ export default {
 
                     <Column header="Screenshot" class="w-24 text-center">
                         <template #body="{ data }">
-                            <i v-if="data.hasScoreImage"
-                               class="pi pi-image text-green-600 cursor-pointer hover:text-green-700 transition-colors"
-                               @click="handleImageClick(data.id)"
-                               @mouseenter="handleImageHover(data.id, $event)"
-                               @mouseleave="handleImageHoverOut"
-                               :title="isMobile ? 'Tap to view screenshot' : 'Hover to preview, click to view full size'"
+                            <i
+                                v-if="data.hasScoreImage"
+                                class="pi pi-image text-green-600 cursor-pointer hover:text-green-700 transition-colors"
+                                @click="handleImageClick(data.id)"
+                                @mouseenter="handleImageHover(data.id, $event)"
+                                @mouseleave="handleImageHoverOut"
+                                :title="isMobile ? 'Tap to view screenshot' : 'Hover to preview, click to view full size'"
                             ></i>
                             <i v-else class="pi pi-minus text-gray-400" title="No screenshot"></i>
                         </template>
@@ -297,26 +294,12 @@ export default {
     </Card>
 
     <!-- Score Image Dialog -->
-    <Dialog
-        v-model:visible="showImageDialog"
-        header="Score Screenshot"
-        :modal="true"
-        :closable="true"
-        :dismissableMask="true"
-        @hide="closeImageDialog"
-        :style="{ width: 'auto', maxWidth: '95vw', maxHeight: '95vh' }"
-        :contentStyle="{ padding: '0' }"
-    >
+    <Dialog v-model:visible="showImageDialog" header="Score Screenshot" :modal="true" :closable="true" :dismissableMask="true" @hide="closeImageDialog" :style="{ width: 'auto', maxWidth: '95vw', maxHeight: '95vh' }" :contentStyle="{ padding: '0' }">
         <div v-if="imageLoading" class="flex justify-center py-8">
             <ProgressSpinner />
         </div>
         <div v-else-if="selectedImageUrl" class="flex justify-center items-center">
-            <img
-                :src="selectedImageUrl"
-                alt="Score screenshot"
-                class="max-w-full max-h-[90vh] object-contain"
-                style="display: block;"
-            />
+            <img :src="selectedImageUrl" alt="Score screenshot" class="max-w-full max-h-[90vh] object-contain" style="display: block" />
         </div>
     </Dialog>
 
@@ -330,11 +313,7 @@ export default {
             maxWidth: '400px'
         }"
     >
-        <img
-            :src="hoverThumbnail.url"
-            alt="Score thumbnail"
-            class="max-w-full max-h-32 object-contain"
-        />
+        <img :src="hoverThumbnail.url" alt="Score thumbnail" class="max-w-full max-h-32 object-contain" />
     </div>
 </template>
 

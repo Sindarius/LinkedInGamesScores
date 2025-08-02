@@ -62,4 +62,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Add SPA fallback routing - serve index.html for all non-API routes
+app.MapFallbackToFile("index.html");
+
 app.Run();

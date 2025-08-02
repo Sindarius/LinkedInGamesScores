@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, watchEffect } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { GameService } from '@/services/gameService.js';
+import { useDateStore } from '@/stores/dateStore.js';
 
 export default {
     name: 'AllGamesChampions',
@@ -15,8 +16,8 @@ export default {
         const toast = useToast();
         const gameService = new GameService();
         const champions = ref([]);
-        const selectedDate = ref(new Date()); // Initialize to today's date
         const isLoading = ref(false);
+        const { selectedDate } = useDateStore();
 
         const sortedChampions = computed(() => {
             return [...champions.value].sort((a, b) => a.gameName.localeCompare(b.gameName));
@@ -106,18 +107,19 @@ export default {
             }
         };
 
-        const setToday = () => {
-            selectedDate.value = new Date();
-            loadChampions();
-        };
-
         onMounted(async () => {
             await loadChampions();
         });
 
-        // Watch for refresh trigger changes
+        // Watch for refresh trigger changes and selected date changes
         watchEffect(() => {
             if (props.refreshTrigger > 0) {
+                loadChampions();
+            }
+        });
+
+        watchEffect(() => {
+            if (selectedDate.value) {
                 loadChampions();
             }
         });
@@ -130,8 +132,7 @@ export default {
             loadChampions,
             formatDate,
             formatTime,
-            formatCompletionTime,
-            setToday
+            formatCompletionTime
         };
     }
 };
@@ -142,8 +143,6 @@ export default {
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold">Daily Champions</h3>
             <div class="flex items-center space-x-2">
-                <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Select date" @date-select="loadChampions" class="w-40" />
-                <Button label="Today" @click="setToday" size="small" severity="secondary" />
                 <Button icon="pi pi-refresh" @click="loadChampions" :loading="isLoading" size="small" />
             </div>
         </div>

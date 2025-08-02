@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using game.api.Data;
 using game.api.Models;
+using game.api.Attributes;
 
 namespace game.api.Controllers
 {
@@ -37,6 +38,7 @@ namespace game.api.Controllers
         }
 
         [HttpGet("all")]
+        [AdminAuthorize]
         public async Task<ActionResult<IEnumerable<GameDto>>> GetAllGamesForAdmin()
         {
             var games = await _context.Games.ToListAsync();
@@ -79,6 +81,7 @@ namespace game.api.Controllers
         }
 
         [HttpPost]
+        [AdminAuthorize]
         public async Task<ActionResult<Game>> PostGame(Game game)
         {
             game.CreatedDate = DateTime.UtcNow;
@@ -89,6 +92,7 @@ namespace game.api.Controllers
         }
 
         [HttpPut("{id}")]
+        [AdminAuthorize]
         public async Task<IActionResult> PutGame(int id, Game game)
         {
             if (id != game.Id)
@@ -118,6 +122,7 @@ namespace game.api.Controllers
         }
 
         [HttpDelete("{id}")]
+        [AdminAuthorize]
         public async Task<IActionResult> DeleteGame(int id)
         {
             var game = await _context.Games.FindAsync(id);

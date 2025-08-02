@@ -63,7 +63,7 @@ export default {
                 }
 
                 scoreImage.value = file;
-                
+
                 // Create preview
                 const reader = new FileReader();
                 reader.onload = (e) => {
@@ -230,34 +230,20 @@ export default {
 
                 <div class="field">
                     <label for="scoreImage">Score Screenshot (Optional)</label>
-                    <FileUpload 
-                        id="scoreImage"
-                        mode="basic" 
-                        accept="image/jpeg,image/jpg,image/png,image/gif"
-                        :maxFileSize="5000000"
-                        @select="handleImageUpload"
-                        :auto="false"
-                        chooseLabel="Choose Image"
-                        class="mb-2"
-                    />
-                    
+                    <FileUpload id="scoreImage" mode="basic" accept="image/jpeg,image/jpg,image/png,image/gif" :maxFileSize="5000000" @select="handleImageUpload" :auto="false" chooseLabel="Choose Image" class="mb-2" />
+
                     <div v-if="imagePreview" class="mt-2">
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-sm text-gray-600">Image Preview:</span>
-                            <Button 
-                                icon="pi pi-times" 
-                                class="p-button-rounded p-button-text p-button-sm"
-                                @click="removeImage"
-                                aria-label="Remove image"
-                            />
+                            <Button icon="pi pi-times" class="p-button-rounded p-button-text p-button-danger" size="small" @click="removeImage" aria-label="Remove image" />
                         </div>
                         <img :src="imagePreview" alt="Score preview" class="max-w-full max-h-48 object-contain border rounded" />
                     </div>
                 </div>
 
-                <div class="flex justify-end space-x-2">
-                    <Button type="button" label="Clear" severity="secondary" @click="clearForm" />
-                    <Button type="submit" label="Submit Score" :loading="isSubmitting" />
+                <div class="flex justify-end gap-3 mt-6">
+                    <Button type="button" label="Clear" severity="secondary" size="large" class="px-6" @click="clearForm" />
+                    <Button type="submit" label="Submit Score" size="large" class="px-6" :loading="isSubmitting" />
                 </div>
             </form>
         </template>
