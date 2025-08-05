@@ -66,28 +66,36 @@ export default {
 <template>
     <div class="game-scores-page">
         <div class="mb-6">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+            <!-- Header -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                     <h1 class="text-3xl font-bold text-gray-900 mb-2">LinkedIn Game Scores</h1>
                     <p class="text-gray-600">Track your daily scores and compete with others!</p>
                 </div>
-                <div class="flex items-center gap-3">
-                    <div class="text-sm text-gray-600">Viewing scores for:</div>
-                    <DatePicker v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Select date" @date-select="onDateChange" class="w-40" />
-                    <Button
-                        label="Today"
-                        @click="
-                            setToday();
-                            onDateChange();
-                        "
-                        severity="secondary"
-                        class="px-4 py-2"
-                    />
-                </div>
             </div>
-            <div class="text-center text-lg font-medium text-blue-600 mb-4">
-                {{ formatSelectedDate() }}
-            </div>
+
+            <!-- Centralized Date Selection -->
+            <Card class="mb-6">
+                <template #content>
+                    <div class="flex flex-col md:flex-row md:items-center md:justify-center gap-4">
+                        <div class="flex items-center gap-3">
+                            <i class="pi pi-calendar text-blue-600 text-xl"></i>
+                            <span class="text-lg font-medium text-gray-700">Select Date:</span>
+                            <Calendar v-model="selectedDate" dateFormat="mm/dd/yy" :showIcon="true" placeholder="Select date" @date-select="onDateChange" class="w-48" />
+                            <Button
+                                label="Today"
+                                @click="
+                                    setToday();
+                                    onDateChange();
+                                "
+                                severity="secondary"
+                                class="px-4 py-2"
+                            />
+                        </div>
+                    </div>
+                    <div class="text-center text-lg font-medium text-blue-600 mt-4">📅 Viewing scores for {{ formatSelectedDate() }}</div>
+                </template>
+            </Card>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
