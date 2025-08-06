@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: linkedin-game-scores-db
+    environment:
+      POSTGRES_DB: gamescores
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    #ports:
+     # - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - game-scores-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build:
+      context: .
+      dockerfile: game.api/Dockerfile
+    container_name: linkedin-game-scores-app
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=gamescores;Username=postgres;Password=postgres
+    ports:
+      - "80:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - game-scores-network
+    restart: unless-stopped
+
+# Removed volumes section - using direct bind mounts instead
+
+networks:
+  game-scores-network:
+    driver: bridge
