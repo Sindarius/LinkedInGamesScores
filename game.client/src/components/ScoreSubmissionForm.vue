@@ -19,6 +19,7 @@ export default {
         const seconds = ref(null);
         const scoreImage = ref(null);
         const imagePreview = ref(null);
+        const fileUploadRef = ref(null);
         const isSubmitting = ref(false);
         const showErrors = ref(false);
 
@@ -76,6 +77,9 @@ export default {
         const removeImage = () => {
             scoreImage.value = null;
             imagePreview.value = null;
+            if (fileUploadRef.value) {
+                fileUploadRef.value.clear();
+            }
         };
 
         const loadGames = async () => {
@@ -127,7 +131,8 @@ export default {
                 toast.add({
                     severity: 'success',
                     summary: 'Success',
-                    detail: 'Score submitted successfully!'
+                    detail: 'Score submitted successfully!',
+                    life: 5000
                 });
 
                 clearForm();
@@ -166,6 +171,9 @@ export default {
             seconds.value = null;
             scoreImage.value = null;
             imagePreview.value = null;
+            if (fileUploadRef.value) {
+                fileUploadRef.value.clear();
+            }
             showErrors.value = false;
         };
 
@@ -181,6 +189,7 @@ export default {
             linkedinUrl,
             isSubmitting,
             showErrors,
+            fileUploadRef,
             submitScore,
             isFormValid,
             clearForm,
@@ -230,7 +239,7 @@ export default {
 
                 <div class="field">
                     <label for="scoreImage">Score Screenshot (Optional)</label>
-                    <FileUpload id="scoreImage" mode="basic" accept="image/jpeg,image/jpg,image/png,image/gif" :maxFileSize="5000000" @select="handleImageUpload" :auto="false" chooseLabel="Choose Image" class="mb-2" />
+                    <FileUpload ref="fileUploadRef" id="scoreImage" mode="basic" accept="image/jpeg,image/jpg,image/png,image/gif" :maxFileSize="5000000" @select="handleImageUpload" :auto="false" chooseLabel="Choose Image" class="mb-2" />
 
                     <div v-if="imagePreview" class="mt-2">
                         <div class="flex items-center justify-between mb-2">

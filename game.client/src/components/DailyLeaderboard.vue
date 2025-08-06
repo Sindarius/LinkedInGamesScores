@@ -256,6 +256,19 @@ export default {
                         </template>
                     </Column>
 
+                <Column field="score" class="text-right">
+                        <template #header>
+                            <span v-if="selectedGame?.scoringType === 1">Guesses</span>
+                            <span v-else-if="selectedGame?.scoringType === 2">Time</span>
+                            <span v-else>Score</span>
+                        </template>
+                        <template #body="{ data }">
+                            <span v-if="data.scoringType === 1" class="font-bold text-lg">{{ data.guessCount }}</span>
+                            <span v-else-if="data.scoringType === 2" class="font-bold text-lg">{{ formatCompletionTime(data.completionTime) }}</span>
+                            <span v-else class="font-bold text-lg">{{ data.score?.toLocaleString() || 'N/A' }}</span>
+                        </template>
+                    </Column>
+                    
                     <Column header="Screenshot" class="w-24 text-center">
                         <template #body="{ data }">
                             <i
@@ -267,19 +280,6 @@ export default {
                                 :title="isMobile ? 'Tap to view screenshot' : 'Hover to preview, click to view full size'"
                             ></i>
                             <i v-else class="pi pi-minus text-gray-400" title="No screenshot"></i>
-                        </template>
-                    </Column>
-
-                    <Column field="score" class="text-right">
-                        <template #header>
-                            <span v-if="selectedGame?.scoringType === 1">Guesses</span>
-                            <span v-else-if="selectedGame?.scoringType === 2">Time</span>
-                            <span v-else>Score</span>
-                        </template>
-                        <template #body="{ data }">
-                            <span v-if="data.scoringType === 1" class="font-bold text-lg">{{ data.guessCount }}</span>
-                            <span v-else-if="data.scoringType === 2" class="font-bold text-lg">{{ formatCompletionTime(data.completionTime) }}</span>
-                            <span v-else class="font-bold text-lg">{{ data.score?.toLocaleString() || 'N/A' }}</span>
                         </template>
                     </Column>
 
