@@ -157,7 +157,8 @@ export default {
             if (selectedGame.value.scoringType === 1) {
                 return guessCount.value && guessCount.value > 0;
             } else if (selectedGame.value.scoringType === 2) {
-                return minutes.value !== null && minutes.value >= 0 && seconds.value !== null && seconds.value >= 0 && seconds.value < 60 && (minutes.value > 0 || seconds.value > 0);
+                const mins = minutes.value || 0;
+                return seconds.value !== null && seconds.value >= 0 && seconds.value < 60 && (mins > 0 || seconds.value > 0);
             }
 
             return false;
@@ -224,12 +225,12 @@ export default {
                     <InputNumber v-if="selectedGame.scoringType === 1" id="guessCount" v-model="guessCount" placeholder="Enter number of guesses" class="w-full" :class="{ 'p-invalid': (!guessCount || guessCount <= 0) && showErrors }" :min="1" />
 
                     <div v-else-if="selectedGame.scoringType === 2" class="flex space-x-2">
-                        <InputNumber id="minutes" v-model="minutes" placeholder="Min" class="flex-1" :class="{ 'p-invalid': (minutes === null || minutes < 0) && showErrors }" :min="0" suffix=" min" />
+                        <InputNumber id="minutes" v-model="minutes" placeholder="Min" class="flex-1" :min="0" suffix=" min" />
                         <InputNumber id="seconds" v-model="seconds" placeholder="Sec" class="flex-1" :class="{ 'p-invalid': (seconds === null || seconds < 0 || seconds >= 60) && showErrors }" :min="0" :max="59" suffix=" sec" />
                     </div>
 
                     <small v-if="selectedGame.scoringType === 1 && (!guessCount || guessCount <= 0) && showErrors" class="p-error">Number of guesses is required.</small>
-                    <small v-if="selectedGame.scoringType === 2 && (minutes === null || minutes < 0 || seconds === null || seconds < 0 || seconds >= 60) && showErrors" class="p-error">Valid completion time is required.</small>
+                    <small v-if="selectedGame.scoringType === 2 && (seconds === null || seconds < 0 || seconds >= 60) && showErrors" class="p-error">Valid completion time is required.</small>
                 </div>
 
                 <div class="field">
