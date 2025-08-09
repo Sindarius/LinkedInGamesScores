@@ -218,8 +218,16 @@ export default {
                 let isBetter = false;
 
                 if (this.selectedGame?.scoringType === 1) {
-                    // Guess-based: lower is better
-                    isBetter = prevScore.guessCount < currentScore.guessCount;
+                    // Guess-based: lower is better, but DNF (99) is worst
+                    if (currentScore.guessCount === 99 && prevScore.guessCount === 99) {
+                        isBetter = false; // Both DNF, tied
+                    } else if (prevScore.guessCount === 99) {
+                        isBetter = false; // Previous is DNF, current is better
+                    } else if (currentScore.guessCount === 99) {
+                        isBetter = true; // Current is DNF, previous is better
+                    } else {
+                        isBetter = prevScore.guessCount < currentScore.guessCount;
+                    }
                 } else if (this.selectedGame?.scoringType === 2) {
                     // Time-based: lower is better
                     isBetter = prevScore.score < currentScore.score;
@@ -302,7 +310,10 @@ export default {
                             <span v-else>Score</span>
                         </template>
                         <template #body="{ data }">
-                            <span v-if="data.scoringType === 1" class="font-bold text-lg">{{ data.guessCount }}</span>
+                            <span v-if="data.scoringType === 1" class="font-bold text-lg">
+                                <span v-if="data.guessCount === 99" class="text-red-600">DNF</span>
+                                <span v-else>{{ data.guessCount }}</span>
+                            </span>
                             <span v-else-if="data.scoringType === 2" class="font-bold text-lg">{{ formatCompletionTime(data.completionTime) }}</span>
                             <span v-else class="font-bold text-lg">{{ data.score?.toLocaleString() || 'N/A' }}</span>
                         </template>

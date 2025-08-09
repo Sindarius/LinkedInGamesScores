@@ -17,6 +17,7 @@ export default {
         const guessCount = ref(null);
         const minutes = ref(null);
         const seconds = ref(null);
+        const ranOutOfGuesses = ref(false);
         const scoreImage = ref(null);
         const imagePreview = ref(null);
         const fileUploadRef = ref(null);
@@ -112,7 +113,7 @@ export default {
                 };
 
                 if (selectedGame.value.scoringType === 1) {
-                    gameScore.guessCount = guessCount.value;
+                    gameScore.guessCount = ranOutOfGuesses.value ? 99 : guessCount.value;
                 } else if (selectedGame.value.scoringType === 2) {
                     const totalSeconds = (minutes.value || 0) * 60 + (seconds.value || 0);
                     gameScore.completionTime = `${Math.floor(totalSeconds / 3600)
@@ -155,7 +156,7 @@ export default {
             }
 
             if (selectedGame.value.scoringType === 1) {
-                return guessCount.value && guessCount.value > 0;
+                return ranOutOfGuesses.value || (guessCount.value && guessCount.value > 0);
             } else if (selectedGame.value.scoringType === 2) {
                 const mins = minutes.value || 0;
                 return seconds.value !== null && seconds.value >= 0 && seconds.value < 60 && (mins > 0 || seconds.value > 0);
@@ -170,6 +171,7 @@ export default {
             guessCount.value = null;
             minutes.value = null;
             seconds.value = null;
+            ranOutOfGuesses.value = false;
             scoreImage.value = null;
             imagePreview.value = null;
             if (fileUploadRef.value) {
@@ -185,6 +187,7 @@ export default {
             guessCount,
             minutes,
             seconds,
+            ranOutOfGuesses,
             scoreImage,
             imagePreview,
             linkedinUrl,
@@ -222,14 +225,31 @@ export default {
                     <label v-if="selectedGame.scoringType === 1" for="guessCount">Number of Guesses</label>
                     <label v-else-if="selectedGame.scoringType === 2" for="completionTime">Completion Time</label>
 
-                    <InputNumber v-if="selectedGame.scoringType === 1" id="guessCount" v-model="guessCount" placeholder="Enter number of guesses" class="w-full" :class="{ 'p-invalid': (!guessCount || guessCount <= 0) && showErrors }" :min="1" />
+                    <div v-if="selectedGame.scoringType === 1" class="space-y-3">
+                        <InputNumber
+                            id="guessCount"
+                            v-model="guessCount"
+                            placeholder="Enter number of guesses"
+                            class="w-full"
+                            :class="{ 'p-invalid': (!guessCount || guessCount <= 0) && !ranOutOfGuesses && showErrors }"
+                            :min="1"
+                            :disabled="ranOutOfGuesses"
+                        />
+
+                        <div class="flex items-center">
+                            <Checkbox id="ranOutOfGuesses" v-model="ranOutOfGuesses" :binary="true" />
+                            <label for="ranOutOfGuesses" class="ml-2 text-sm font-medium text-gray-700 cursor-pointer">I ran out of guesses (DNF)</label>
+                        </div>
+
+                        <small v-if="ranOutOfGuesses" class="text-blue-600 text-sm">This will be recorded as a "Did Not Finish" result</small>
+                    </div>
 
                     <div v-else-if="selectedGame.scoringType === 2" class="flex space-x-2">
                         <InputNumber id="minutes" v-model="minutes" placeholder="Min" class="flex-1" :min="0" suffix=" min" />
                         <InputNumber id="seconds" v-model="seconds" placeholder="Sec" class="flex-1" :class="{ 'p-invalid': (seconds === null || seconds < 0 || seconds >= 60) && showErrors }" :min="0" :max="59" suffix=" sec" />
                     </div>
 
-                    <small v-if="selectedGame.scoringType === 1 && (!guessCount || guessCount <= 0) && showErrors" class="p-error">Number of guesses is required.</small>
+                    <small v-if="selectedGame.scoringType === 1 && (!guessCount || guessCount <= 0) && !ranOutOfGuesses && showErrors" class="p-error">Number of guesses is required.</small>
                     <small v-if="selectedGame.scoringType === 2 && (seconds === null || seconds < 0 || seconds >= 60) && showErrors" class="p-error">Valid completion time is required.</small>
                 </div>
 

@@ -228,12 +228,18 @@ export default {
 
                     <div v-if="champion.champions && champion.champions.length > 0" class="text-right">
                         <div class="text-2xl font-bold text-yellow-600">
-                            <span v-if="champion.scoringType === 1">{{ champion.guessCount }}</span>
+                            <span v-if="champion.scoringType === 1">
+                                <span v-if="champion.guessCount === 99" class="text-red-600">DNF</span>
+                                <span v-else>{{ champion.guessCount }}</span>
+                            </span>
                             <span v-else-if="champion.scoringType === 2">{{ formatCompletionTime(champion.completionTime) }}</span>
                             <span v-else>{{ champion.score?.toLocaleString() || 'N/A' }}</span>
                         </div>
                         <div class="text-xs text-gray-600">
-                            <span v-if="champion.scoringType === 1">guesses</span>
+                            <span v-if="champion.scoringType === 1">
+                                <span v-if="champion.guessCount === 99">did not finish</span>
+                                <span v-else>guesses</span>
+                            </span>
                             <span v-else-if="champion.scoringType === 2">completion time</span>
                             <span v-else>score</span>
                         </div>
