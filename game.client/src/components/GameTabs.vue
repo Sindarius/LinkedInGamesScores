@@ -72,7 +72,7 @@ export default {
 
         <!-- Individual Game Cards -->
         <div class="grid grid-cols-1 gap-6">
-            <Card v-for="game in sortedGames" :key="game.id" class="game-card">
+            <Card v-for="game in sortedGames" :key="game.id" :id="`game-${game.id}`" class="game-card">
                 <template #title>
                     <div class="flex items-center gap-2">
                         <i class="pi pi-trophy text-primary"></i>
@@ -107,5 +107,10 @@ export default {
 
 .text-primary {
     @apply text-blue-600;
+}
+
+:global(.highlight-game) {
+    @apply ring-4 ring-blue-300 ring-opacity-75;
+    transition: all 0.3s ease-in-out;
 }
 </style>

@@ -107,6 +107,21 @@ export default {
             }
         };
 
+        const scrollToGameSection = (gameId) => {
+            const element = document.getElementById(`game-${gameId}`);
+            if (element) {
+                element.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+                // Add a subtle highlight effect
+                element.classList.add('highlight-game');
+                setTimeout(() => {
+                    element.classList.remove('highlight-game');
+                }, 2000);
+            }
+        };
+
         onMounted(async () => {
             await loadChampions();
         });
@@ -132,7 +147,8 @@ export default {
             loadChampions,
             formatDate,
             formatTime,
-            formatCompletionTime
+            formatCompletionTime,
+            scrollToGameSection
         };
     }
 };
@@ -154,7 +170,12 @@ export default {
         </div>
 
         <div v-else class="space-y-4">
-            <div v-for="champion in sortedChampions" :key="champion.gameId" class="champion-card p-4 border border-gray-200 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 hover:shadow-md transition-shadow">
+            <div
+                v-for="champion in sortedChampions"
+                :key="champion.gameId"
+                class="champion-card p-4 border border-gray-200 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 hover:shadow-md transition-shadow cursor-pointer"
+                @click="scrollToGameSection(champion.gameId)"
+            >
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
                         <div class="flex-shrink-0">

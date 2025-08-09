@@ -256,7 +256,7 @@ export default {
                         </template>
                     </Column>
 
-                <Column field="score" class="text-right">
+                    <Column field="score" class="text-right">
                         <template #header>
                             <span v-if="selectedGame?.scoringType === 1">Guesses</span>
                             <span v-else-if="selectedGame?.scoringType === 2">Time</span>
@@ -268,7 +268,7 @@ export default {
                             <span v-else class="font-bold text-lg">{{ data.score?.toLocaleString() || 'N/A' }}</span>
                         </template>
                     </Column>
-                    
+
                     <Column header="Screenshot" class="w-24 text-center">
                         <template #body="{ data }">
                             <i
