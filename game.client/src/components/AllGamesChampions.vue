@@ -31,19 +31,35 @@ export default {
                 const championData = [];
 
                 for (const game of games) {
-                    const leaderboard = await gameService.getLeaderboard(game.id, selectedDate.value, 1);
+                    const leaderboard = await gameService.getLeaderboard(game.id, selectedDate.value, 10);
                     if (leaderboard.length > 0) {
-                        const champion = leaderboard[0];
+                        // Find all players tied for first place
+                        const firstPlaceScore = leaderboard[0].score;
+                        const firstPlaceGuesses = leaderboard[0].guessCount;
+                        const firstPlaceTime = leaderboard[0].completionTime;
+
+                        const tiedChampions = leaderboard.filter((player) => {
+                            if (game.scoringType === 1) {
+                                // Guess-based: tied if same guess count
+                                return player.guessCount === firstPlaceGuesses;
+                            } else if (game.scoringType === 2) {
+                                // Time-based: tied if same completion time
+                                return player.completionTime === firstPlaceTime;
+                            } else {
+                                // Score-based: tied if same score
+                                return player.score === firstPlaceScore;
+                            }
+                        });
+
                         championData.push({
                             gameId: game.id,
                             gameName: game.name,
                             scoringType: game.scoringType,
-                            playerName: champion.playerName,
-                            linkedInProfileUrl: champion.linkedInProfileUrl,
-                            score: champion.score,
-                            guessCount: champion.guessCount,
-                            completionTime: champion.completionTime,
-                            dateAchieved: champion.dateAchieved
+                            champions: tiedChampions,
+                            score: firstPlaceScore,
+                            guessCount: firstPlaceGuesses,
+                            completionTime: firstPlaceTime,
+                            dateAchieved: tiedChampions[0].dateAchieved
                         });
                     } else {
                         // No champion for this date
@@ -51,8 +67,7 @@ export default {
                             gameId: game.id,
                             gameName: game.name,
                             scoringType: game.scoringType,
-                            playerName: null,
-                            linkedInProfileUrl: null,
+                            champions: [],
                             score: null,
                             guessCount: null,
                             completionTime: null,
@@ -183,12 +198,27 @@ export default {
                         </div>
                         <div>
                             <h4 class="font-bold text-lg text-gray-900">{{ champion.gameName }}</h4>
-                            <div v-if="champion.playerName" class="flex items-center space-x-2">
-                                <Avatar :label="champion.playerName.charAt(0).toUpperCase()" size="small" />
-                                <div>
-                                    <span class="font-medium text-gray-900">{{ champion.playerName }}</span>
-                                    <div v-if="champion.linkedInProfileUrl" class="text-xs text-blue-600">
-                                        <a :href="champion.linkedInProfileUrl" target="_blank" class="hover:underline"> LinkedIn Profile </a>
+                            <div v-if="champion.champions && champion.champions.length > 0" class="space-y-2">
+                                <!-- Single Champion -->
+                                <div v-if="champion.champions.length === 1" class="flex items-center space-x-2">
+                                    <Avatar :label="champion.champions[0].playerName.charAt(0).toUpperCase()" size="small" />
+                                    <div>
+                                        <span class="font-medium text-gray-900">{{ champion.champions[0].playerName }}</span>
+                                        <div v-if="champion.champions[0].linkedInProfileUrl" class="text-xs text-blue-600">
+                                            <a :href="champion.champions[0].linkedInProfileUrl" target="_blank" class="hover:underline"> LinkedIn Profile </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Multiple Tied Champions -->
+                                <div v-else class="space-y-2">
+                                    <div class="text-sm font-medium text-gray-700">{{ champion.champions.length }} players tied for 1st:</div>
+                                    <div class="flex flex-wrap gap-2">
+                                        <div v-for="(player, index) in champion.champions" :key="player.id" class="flex items-center space-x-1 bg-white bg-opacity-70 rounded-full px-2 py-1">
+                                            <Avatar :label="player.playerName.charAt(0).toUpperCase()" size="small" />
+                                            <span class="text-sm font-medium text-gray-900">{{ player.playerName }}</span>
+                                            <span v-if="index < champion.champions.length - 1" class="text-gray-400">•</span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -196,7 +226,7 @@ export default {
                         </div>
                     </div>
 
-                    <div v-if="champion.playerName" class="text-right">
+                    <div v-if="champion.champions && champion.champions.length > 0" class="text-right">
                         <div class="text-2xl font-bold text-yellow-600">
                             <span v-if="champion.scoringType === 1">{{ champion.guessCount }}</span>
                             <span v-else-if="champion.scoringType === 2">{{ formatCompletionTime(champion.completionTime) }}</span>

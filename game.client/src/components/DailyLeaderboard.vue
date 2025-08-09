@@ -207,6 +207,45 @@ export default {
             else {
                 this.viewScoreImage(scoreId);
             }
+        },
+        getRankDisplay(index, currentScore, scores) {
+            if (index === 0) return 1;
+
+            // Since scores are already sorted, find the actual rank by counting unique better scores
+            let actualRank = 1;
+            for (let i = 0; i < index; i++) {
+                const prevScore = scores[i];
+                let isBetter = false;
+
+                if (this.selectedGame?.scoringType === 1) {
+                    // Guess-based: lower is better
+                    isBetter = prevScore.guessCount < currentScore.guessCount;
+                } else if (this.selectedGame?.scoringType === 2) {
+                    // Time-based: lower is better
+                    isBetter = prevScore.score < currentScore.score;
+                } else {
+                    // Score-based: higher is better
+                    isBetter = prevScore.score > currentScore.score;
+                }
+
+                if (isBetter) {
+                    actualRank++;
+                }
+            }
+
+            // Check if tied with previous score
+            const prevScore = scores[index - 1];
+            let isTied = false;
+
+            if (this.selectedGame?.scoringType === 1) {
+                isTied = prevScore.guessCount === currentScore.guessCount;
+            } else if (this.selectedGame?.scoringType === 2) {
+                isTied = prevScore.score === currentScore.score;
+            } else {
+                isTied = prevScore.score === currentScore.score;
+            }
+
+            return isTied ? 'T' + actualRank : actualRank;
         }
     }
 };
@@ -237,8 +276,8 @@ export default {
 
                 <DataTable :value="scores" :rows="10" :paginator="scores.length > 10" responsiveLayout="scroll">
                     <Column field="rank" header="Rank" class="w-16">
-                        <template #body="{ index }">
-                            <Badge :value="index + 1" :severity="getBadgeSeverity(index)" />
+                        <template #body="{ data, index }">
+                            <Badge :value="getRankDisplay(index, data, scores)" :severity="getBadgeSeverity(index)" />
                         </template>
                     </Column>
 
