@@ -1,5 +1,6 @@
 <script>
 import { GameService } from '@/services/gameService.js';
+import { useDateStore } from '@/stores/dateStore.js';
 
 export default {
     name: 'DailyLeaderboard',
@@ -13,10 +14,13 @@ export default {
             default: 0
         }
     },
+    setup() {
+        const { selectedDate } = useDateStore();
+        return { selectedDate };
+    },
     data() {
         return {
             scores: [],
-            selectedDate: new Date(), // Initialize to today's date
             selectedGame: null,
             isLoading: false,
             gameService: new GameService(),
