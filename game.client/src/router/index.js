@@ -17,6 +17,11 @@ const router = createRouter({
                     path: '/admin',
                     name: 'admin',
                     component: () => import('@/views/Admin.vue')
+                },
+                {
+                    path: '/ocr-training',
+                    name: 'ocrtraining',
+                    component: () => import('@/views/OCRTraining.vue')
                 }
             ]
         },

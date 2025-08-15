@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { usePlayerStore } from '@/stores/playerStore.js';
 import { GameService } from '@/services/gameService.js';
+import { ocrService } from '@/services/ocrService.js';
 
 export default {
     name: 'ScoreSubmissionForm',
@@ -23,6 +24,7 @@ export default {
         const fileUploadRef = ref(null);
         const isSubmitting = ref(false);
         const showErrors = ref(false);
+        const isParsingOCR = ref(false);
 
         // Use computed properties for player data that sync with store
         const playerName = computed({
@@ -80,6 +82,79 @@ export default {
             imagePreview.value = null;
             if (fileUploadRef.value) {
                 fileUploadRef.value.clear();
+            }
+        };
+
+        const parseScoreFromImage = async () => {
+            if (!scoreImage.value || !selectedGame.value) {
+                return;
+            }
+
+            isParsingOCR.value = true;
+
+            try {
+                toast.add({
+                    severity: 'info',
+                    summary: 'Processing Image',
+                    detail: 'Extracting text from image...',
+                    life: 3000
+                });
+
+                const extractedText = await ocrService.extractTextFromImage(scoreImage.value);
+                console.log('Extracted text:', extractedText);
+
+                const gameType = selectedGame.value.scoringType === 1 ? 'guess' : 'time';
+                const parsedScore = ocrService.parseLinkedInGameScore(extractedText, gameType);
+
+                if (parsedScore) {
+                    if (gameType === 'time') {
+                        minutes.value = parsedScore.minutes;
+                        seconds.value = parsedScore.seconds;
+                        toast.add({
+                            severity: 'success',
+                            summary: 'Score Parsed',
+                            detail: `Found time: ${parsedScore.minutes}:${parsedScore.seconds.toString().padStart(2, '0')} (confidence: ${parsedScore.confidence})`,
+                            life: 5000
+                        });
+                    } else if (gameType === 'guess') {
+                        if (parsedScore.isDNF) {
+                            ranOutOfGuesses.value = true;
+                            guessCount.value = null;
+                            toast.add({
+                                severity: 'success',
+                                summary: 'Score Parsed',
+                                detail: 'Detected DNF (Did Not Finish)',
+                                life: 5000
+                            });
+                        } else {
+                            guessCount.value = parsedScore.guessCount;
+                            ranOutOfGuesses.value = false;
+                            toast.add({
+                                severity: 'success',
+                                summary: 'Score Parsed',
+                                detail: `Found ${parsedScore.guessCount} guesses (confidence: ${parsedScore.confidence})`,
+                                life: 5000
+                            });
+                        }
+                    }
+                } else {
+                    toast.add({
+                        severity: 'warn',
+                        summary: 'No Score Found',
+                        detail: 'Could not detect a valid score in the image. Please enter manually.',
+                        life: 5000
+                    });
+                }
+            } catch (error) {
+                console.error('OCR parsing failed:', error);
+                toast.add({
+                    severity: 'error',
+                    summary: 'Parsing Failed',
+                    detail: 'Failed to process the image. Please try again or enter manually.',
+                    life: 5000
+                });
+            } finally {
+                isParsingOCR.value = false;
             }
         };
 
@@ -193,12 +268,14 @@ export default {
             linkedinUrl,
             isSubmitting,
             showErrors,
+            isParsingOCR,
             fileUploadRef,
             submitScore,
             isFormValid,
             clearForm,
             handleImageUpload,
-            removeImage
+            removeImage,
+            parseScoreFromImage
         };
     }
 };
@@ -268,6 +345,11 @@ export default {
                             <Button icon="pi pi-times" class="p-button-rounded p-button-text p-button-danger" size="small" @click="removeImage" aria-label="Remove image" />
                         </div>
                         <img :src="imagePreview" alt="Score preview" class="max-w-full max-h-48 object-contain border rounded" />
+
+                        <div v-if="selectedGame" class="mt-3">
+                            <Button icon="pi pi-eye" label="Parse Score from Image" class="w-full" size="small" :loading="isParsingOCR" @click="parseScoreFromImage" :disabled="!selectedGame" />
+                            <small class="text-gray-500 text-xs block mt-1"> Uses OCR to automatically detect and fill in your score from the screenshot </small>
+                        </div>
                     </div>
                 </div>
 

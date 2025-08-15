@@ -8,7 +8,8 @@ const model = ref([
         label: 'LinkedIn Games',
         items: [
             { label: 'Game Scores', icon: 'pi pi-fw pi-trophy', to: '/' },
-            { label: 'Admin Panel', icon: 'pi pi-fw pi-cog', to: '/admin' }
+            { label: 'Admin Panel', icon: 'pi pi-fw pi-cog', to: '/admin' },
+            { label: 'OCR Training', icon: 'pi pi-fw pi-eye', to: '/ocr-training' }
         ]
     }
 ]);
