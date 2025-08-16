@@ -1,30 +1,18 @@
-<script setup>
-import { useLayout } from '@/layout/composables/layout';
-import { useThemeStore } from '@/stores/themeStore.js';
+import { reactive, watch } from 'vue';
 import { $t, updatePreset, updateSurfacePalette } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import Lara from '@primeuix/themes/lara';
 import Nora from '@primeuix/themes/nora';
-import { ref } from 'vue';
 
-const { layoutConfig, isDarkTheme } = useLayout();
-const { setPrimary, setSurface, setPreset, setMenuMode } = useThemeStore();
+const THEME_STORAGE_KEY = 'gameScores_themePreferences';
 
 const presets = {
     Aura,
     Lara,
     Nora
 };
-const preset = ref(layoutConfig.preset);
-const presetOptions = ref(Object.keys(presets));
 
-const menuMode = ref(layoutConfig.menuMode);
-const menuModeOptions = ref([
-    { label: 'Static', value: 'static' },
-    { label: 'Overlay', value: 'overlay' }
-]);
-
-const primaryColors = ref([
+const primaryColors = [
     { name: 'noir', palette: {} },
     { name: 'emerald', palette: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b', 950: '#022c22' } },
     { name: 'green', palette: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d', 950: '#052e16' } },
@@ -42,9 +30,9 @@ const primaryColors = ref([
     { name: 'fuchsia', palette: { 50: '#fdf4ff', 100: '#fae8ff', 200: '#f5d0fe', 300: '#f0abfc', 400: '#e879f9', 500: '#d946ef', 600: '#c026d3', 700: '#a21caf', 800: '#86198f', 900: '#701a75', 950: '#4a044e' } },
     { name: 'pink', palette: { 50: '#fdf2f8', 100: '#fce7f3', 200: '#fbcfe8', 300: '#f9a8d4', 400: '#f472b6', 500: '#ec4899', 600: '#db2777', 700: '#be185d', 800: '#9d174d', 900: '#831843', 950: '#500724' } },
     { name: 'rose', palette: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#9f1239', 900: '#881337', 950: '#4c0519' } }
-]);
+];
 
-const surfaces = ref([
+const surfaces = [
     {
         name: 'slate',
         palette: { 0: '#ffffff', 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a', 950: '#020617' }
@@ -77,10 +65,42 @@ const surfaces = ref([
         name: 'ocean',
         palette: { 0: '#ffffff', 50: '#fbfcfc', 100: '#F7F9F8', 200: '#EFF3F2', 300: '#DADEDD', 400: '#B1B7B6', 500: '#828787', 600: '#5F7274', 700: '#415B61', 800: '#29444E', 900: '#183240', 950: '#0c1920' }
     }
-]);
+];
 
-function getPresetExt() {
-    const color = primaryColors.value.find((c) => c.name === layoutConfig.primary);
+const defaultTheme = {
+    preset: 'Aura',
+    primary: 'emerald',
+    surface: null,
+    darkTheme: false,
+    menuMode: 'static'
+};
+
+// Load saved theme preferences from localStorage
+const loadThemeFromStorage = () => {
+    try {
+        const saved = localStorage.getItem(THEME_STORAGE_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            return { ...defaultTheme, ...parsed };
+        }
+    } catch (error) {
+        console.warn('Failed to load theme preferences from localStorage:', error);
+    }
+    return defaultTheme;
+};
+
+// Save theme preferences to localStorage
+const saveThemeToStorage = (theme) => {
+    try {
+        localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+    } catch (error) {
+        console.warn('Failed to save theme preferences to localStorage:', error);
+    }
+};
+
+// Helper functions for theme application
+function getPresetExt(primary) {
+    const color = primaryColors.find((c) => c.name === primary);
 
     if (color.name === 'noir') {
         return {
@@ -169,81 +189,82 @@ function getPresetExt() {
     }
 }
 
-function updateColors(type, color) {
-    if (type === 'primary') {
-        setPrimary(color.name);
-    } else if (type === 'surface') {
-        setSurface(color.name);
+function applyThemeSettings(theme) {
+    // Apply dark mode class
+    if (theme.darkTheme) {
+        document.documentElement.classList.add('app-dark');
+    } else {
+        document.documentElement.classList.remove('app-dark');
     }
 
-    applyTheme(type, color);
-}
-
-function applyTheme(type, color) {
-    if (type === 'primary') {
-        updatePreset(getPresetExt());
-    } else if (type === 'surface') {
-        updateSurfacePalette(color.palette);
+    // Apply PrimeVue theme
+    const presetValue = presets[theme.preset];
+    const surfacePalette = theme.surface ? surfaces.find((s) => s.name === theme.surface)?.palette : null;
+    
+    if (presetValue) {
+        const primeuiTheme = $t().preset(presetValue).preset(getPresetExt(theme.primary));
+        
+        if (surfacePalette) {
+            primeuiTheme.surfacePalette(surfacePalette);
+        }
+        
+        primeuiTheme.use({ useDefaultOptions: true });
     }
 }
 
-function onPresetChange() {
-    setPreset(preset.value);
-    const presetValue = presets[preset.value];
-    const surfacePalette = surfaces.value.find((s) => s.name === layoutConfig.surface)?.palette;
+// Create reactive theme store
+const themeStore = reactive(loadThemeFromStorage());
 
-    $t().preset(presetValue).preset(getPresetExt()).surfacePalette(surfacePalette).use({ useDefaultOptions: true });
+// Apply theme on initialization
+applyThemeSettings(themeStore);
+
+// Watch for changes and save to localStorage + apply themes
+watch(
+    () => ({ ...themeStore }),
+    (newTheme) => {
+        saveThemeToStorage(newTheme);
+        applyThemeSettings(newTheme);
+    },
+    { deep: true }
+);
+
+export function useThemeStore() {
+    const updateTheme = (updates) => {
+        Object.assign(themeStore, updates);
+    };
+
+    const setPreset = (preset) => {
+        themeStore.preset = preset;
+    };
+
+    const setPrimary = (primary) => {
+        themeStore.primary = primary;
+    };
+
+    const setSurface = (surface) => {
+        themeStore.surface = surface;
+    };
+
+    const setDarkTheme = (isDark) => {
+        themeStore.darkTheme = isDark;
+    };
+
+    const setMenuMode = (mode) => {
+        themeStore.menuMode = mode;
+    };
+
+    const resetToDefaults = () => {
+        Object.assign(themeStore, defaultTheme);
+    };
+
+    return {
+        themeStore,
+        updateTheme,
+        setPreset,
+        setPrimary,
+        setSurface,
+        setDarkTheme,
+        setMenuMode,
+        resetToDefaults
+    };
 }
-
-function onMenuModeChange() {
-    setMenuMode(menuMode.value);
-}
-</script>
-
-<template>
-    <div
-        class="config-panel hidden absolute top-[3.25rem] right-0 w-64 p-4 bg-surface-0 dark:bg-surface-900 border border-surface rounded-border origin-top shadow-[0px_3px_5px_rgba(0,0,0,0.02),0px_0px_2px_rgba(0,0,0,0.05),0px_1px_4px_rgba(0,0,0,0.08)]"
-    >
-        <div class="flex flex-col gap-4">
-            <div>
-                <span class="text-sm text-muted-color font-semibold">Primary</span>
-                <div class="pt-2 flex gap-2 flex-wrap justify-between">
-                    <button
-                        v-for="primaryColor of primaryColors"
-                        :key="primaryColor.name"
-                        type="button"
-                        :title="primaryColor.name"
-                        @click="updateColors('primary', primaryColor)"
-                        :class="['border-none w-5 h-5 rounded-full p-0 cursor-pointer outline-none outline-offset-1', { 'outline-primary': layoutConfig.primary === primaryColor.name }]"
-                        :style="{ backgroundColor: `${primaryColor.name === 'noir' ? 'var(--text-color)' : primaryColor.palette['500']}` }"
-                    ></button>
-                </div>
-            </div>
-            <div>
-                <span class="text-sm text-muted-color font-semibold">Surface</span>
-                <div class="pt-2 flex gap-2 flex-wrap justify-between">
-                    <button
-                        v-for="surface of surfaces"
-                        :key="surface.name"
-                        type="button"
-                        :title="surface.name"
-                        @click="updateColors('surface', surface)"
-                        :class="[
-                            'border-none w-5 h-5 rounded-full p-0 cursor-pointer outline-none outline-offset-1',
-                            { 'outline-primary': layoutConfig.surface ? layoutConfig.surface === surface.name : isDarkTheme ? surface.name === 'zinc' : surface.name === 'slate' }
-                        ]"
-                        :style="{ backgroundColor: `${surface.palette['500']}` }"
-                    ></button>
-                </div>
-            </div>
-            <div class="flex flex-col gap-2">
-                <span class="text-sm text-muted-color font-semibold">Presets</span>
-                <SelectButton v-model="preset" @change="onPresetChange" :options="presetOptions" :allowEmpty="false" />
-            </div>
-            <div class="flex flex-col gap-2">
-                <span class="text-sm text-muted-color font-semibold">Menu Mode</span>
-                <SelectButton v-model="menuMode" @change="onMenuModeChange" :options="menuModeOptions" :allowEmpty="false" optionLabel="label" optionValue="value" />
-            </div>
-        </div>
-    </div>
-</template>

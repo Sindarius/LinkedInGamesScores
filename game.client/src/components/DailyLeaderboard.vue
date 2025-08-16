@@ -324,7 +324,7 @@ export default {
 </script>
 
 <template>
-    <Card>
+    <Card class="bg-surface-0 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
         <template #title>
             <div class="flex justify-between items-center">
                 <span>{{ selectedGame?.name || 'All Games' }} Leaderboard</span>
@@ -338,13 +338,13 @@ export default {
                 <ProgressSpinner size="40" />
             </div>
 
-            <div v-else-if="scores.length === 0" class="text-center py-8 text-gray-500">
+            <div v-else-if="scores.length === 0" class="text-center py-8 text-muted-color">
                 <i class="pi pi-info-circle text-4xl mb-4"></i>
                 <p>No scores found for {{ formatDate(selectedDate || new Date()) }}</p>
             </div>
 
             <div v-else>
-                <div class="mb-4 text-sm text-gray-600">Showing scores for {{ formatDate(selectedDate || new Date()) }}</div>
+                <div class="mb-4 text-sm text-muted-color">Showing scores for {{ formatDate(selectedDate || new Date()) }}</div>
 
                 <DataTable :value="scores" :rows="10" :paginator="scores.length > 10" responsiveLayout="scroll">
                     <Column field="rank" header="Rank" class="w-16">

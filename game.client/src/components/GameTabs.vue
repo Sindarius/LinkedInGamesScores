@@ -55,7 +55,7 @@ export default {
 <template>
     <div class="game-cards">
         <!-- All Games Card -->
-        <Card class="mb-6">
+        <Card class="mb-6 bg-surface-0 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
             <template #title>
                 <div class="flex items-center gap-2">
                     <i class="pi pi-chart-bar text-primary"></i>
@@ -63,7 +63,7 @@ export default {
                 </div>
             </template>
             <template #subtitle>
-                <span class="text-sm text-gray-600"> First place players from each game </span>
+                <span class="text-sm text-muted-color"> First place players from each game </span>
             </template>
             <template #content>
                 <AllGamesChampions :refreshTrigger="refreshTrigger" />
@@ -72,7 +72,7 @@ export default {
 
         <!-- Individual Game Cards -->
         <div class="grid grid-cols-1 gap-6">
-            <Card v-for="game in sortedGames" :key="game.id" :id="`game-${game.id}`" class="game-card">
+            <Card v-for="game in sortedGames" :key="game.id" :id="`game-${game.id}`" class="game-card bg-surface-0 dark:bg-surface-800 border border-surface-200 dark:border-surface-700">
                 <template #title>
                     <div class="flex items-center gap-2">
                         <i class="pi pi-trophy text-primary"></i>
@@ -80,7 +80,7 @@ export default {
                     </div>
                 </template>
                 <template #subtitle>
-                    <span class="text-sm text-gray-600">
+                    <span class="text-sm text-muted-color">
                         {{ game.scoringType === 1 ? 'Scored by number of guesses (lower is better)' : 'Scored by completion time (faster is better)' }}
                     </span>
                 </template>

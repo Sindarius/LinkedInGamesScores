@@ -188,22 +188,22 @@ export default {
             <div
                 v-for="champion in sortedChampions"
                 :key="champion.gameId"
-                class="champion-card p-4 border border-gray-200 rounded-lg bg-gradient-to-r from-yellow-50 to-orange-50 hover:shadow-md transition-shadow cursor-pointer"
+                class="champion-card p-4 border border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-800 hover:shadow-md transition-shadow cursor-pointer"
                 @click="scrollToGameSection(champion.gameId)"
             >
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
                         <div class="flex-shrink-0">
-                            <i class="pi pi-crown text-yellow-600 text-2xl"></i>
+                            <i class="pi pi-crown text-primary text-2xl"></i>
                         </div>
                         <div>
-                            <h4 class="font-bold text-lg text-gray-900">{{ champion.gameName }}</h4>
+                            <h4 class="font-bold text-lg text-color">{{ champion.gameName }}</h4>
                             <div v-if="champion.champions && champion.champions.length > 0" class="space-y-2">
                                 <!-- Single Champion -->
                                 <div v-if="champion.champions.length === 1" class="flex items-center space-x-2">
                                     <Avatar :label="champion.champions[0].playerName.charAt(0).toUpperCase()" size="small" />
                                     <div>
-                                        <span class="font-medium text-gray-900">{{ champion.champions[0].playerName }}</span>
+                                        <span class="font-medium text-color">{{ champion.champions[0].playerName }}</span>
                                         <div v-if="champion.champions[0].linkedInProfileUrl" class="text-xs text-blue-600">
                                             <a :href="champion.champions[0].linkedInProfileUrl" target="_blank" class="hover:underline"> LinkedIn Profile </a>
                                         </div>
@@ -212,21 +212,21 @@ export default {
 
                                 <!-- Multiple Tied Champions -->
                                 <div v-else class="space-y-2">
-                                    <div class="text-sm font-medium text-gray-700">{{ champion.champions.length }} players tied for 1st:</div>
+                                    <div class="text-sm font-medium text-muted-color">{{ champion.champions.length }} players tied for 1st:</div>
                                     <div class="flex flex-wrap gap-2">
-                                        <div v-for="(player, index) in champion.champions" :key="player.id" class="flex items-center space-x-1 bg-white bg-opacity-70 rounded-full px-2 py-1">
+                                        <div v-for="(player, index) in champion.champions" :key="player.id" class="flex items-center space-x-1 bg-surface-100 dark:bg-surface-700 rounded-full px-2 py-1">
                                             <Avatar :label="player.playerName.charAt(0).toUpperCase()" size="small" />
-                                            <span class="text-sm font-medium text-gray-900">{{ player.playerName }}</span>
+                                            <span class="text-sm font-medium text-color">{{ player.playerName }}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div v-else class="text-gray-500 italic">No scores recorded for this date</div>
+                            <div v-else class="text-muted-color italic">No scores recorded for this date</div>
                         </div>
                     </div>
 
                     <div v-if="champion.champions && champion.champions.length > 0" class="text-right">
-                        <div class="text-2xl font-bold text-yellow-600">
+                        <div class="text-2xl font-bold text-primary">
                             <span v-if="champion.scoringType === 1">
                                 <span v-if="champion.guessCount === 99" class="text-red-600">DNF</span>
                                 <span v-else>{{ champion.guessCount }}</span>
@@ -234,7 +234,7 @@ export default {
                             <span v-else-if="champion.scoringType === 2">{{ formatCompletionTime(champion.completionTime) }}</span>
                             <span v-else>{{ champion.score?.toLocaleString() || 'N/A' }}</span>
                         </div>
-                        <div class="text-xs text-gray-600">
+                        <div class="text-xs text-muted-color">
                             <span v-if="champion.scoringType === 1">
                                 <span v-if="champion.guessCount === 99">did not finish</span>
                                 <span v-else>guesses</span>
@@ -242,7 +242,7 @@ export default {
                             <span v-else-if="champion.scoringType === 2">completion time</span>
                             <span v-else>score</span>
                         </div>
-                        <div class="text-xs text-gray-500 mt-1">
+                        <div class="text-xs text-muted-color mt-1">
                             {{ formatTime(champion.dateAchieved) }}
                         </div>
                     </div>

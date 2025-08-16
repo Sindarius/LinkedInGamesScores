@@ -1,12 +1,10 @@
 import { computed, reactive } from 'vue';
+import { useThemeStore } from '@/stores/themeStore.js';
 
-const layoutConfig = reactive({
-    preset: 'Aura',
-    primary: 'emerald',
-    surface: null,
-    darkTheme: false,
-    menuMode: 'static'
-});
+const { themeStore, setDarkTheme } = useThemeStore();
+
+// Use themeStore as layoutConfig for backward compatibility
+const layoutConfig = themeStore;
 
 const layoutState = reactive({
     staticMenuDesktopInactive: false,
@@ -34,7 +32,8 @@ export function useLayout() {
     };
 
     const executeDarkModeToggle = () => {
-        layoutConfig.darkTheme = !layoutConfig.darkTheme;
+        const newDarkMode = !layoutConfig.darkTheme;
+        setDarkTheme(newDarkMode);
         document.documentElement.classList.toggle('app-dark');
     };
 
