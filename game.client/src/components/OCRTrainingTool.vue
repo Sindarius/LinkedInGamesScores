@@ -1,7 +1,7 @@
 <script>
 import { ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { createWorker } from 'tesseract.js';
+import { ocrService } from '@/services/ocrService.js';
 
 export default {
     name: 'OCRTrainingTool',
@@ -32,113 +32,28 @@ export default {
                 // Reset previous results
                 analysisResults.value = [];
                 preprocessedImage.value = null;
-            }
-        };
-
-        const preprocessImage = async (imageFile) => {
-            return new Promise((resolve) => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                const img = new Image();
-
-                img.onload = () => {
-                    // Scale down large images for better OCR processing
-                    const maxDimension = 1200;
-                    let { width, height } = img;
-
-                    if (width > maxDimension || height > maxDimension) {
-                        const scale = Math.min(maxDimension / width, maxDimension / height);
-                        width = Math.round(width * scale);
-                        height = Math.round(height * scale);
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-
-                    // Use better image scaling
-                    ctx.imageSmoothingEnabled = true;
-                    ctx.imageSmoothingQuality = 'high';
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const data = imageData.data;
-
-                    // Enhanced preprocessing for large fonts
-                    for (let i = 0; i < data.length; i += 4) {
-                        const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
-
-                        // Adaptive thresholding - more gentle for large fonts
-                        let threshold = 128;
-
-                        // Adjust threshold based on local brightness
-                        const localBrightness = gray;
-                        if (localBrightness > 200) {
-                            threshold = 150; // Higher threshold for bright areas
-                        } else if (localBrightness < 80) {
-                            threshold = 100; // Lower threshold for dark areas
-                        }
-
-                        const contrast = gray > threshold ? 255 : 0;
-                        data[i] = contrast;
-                        data[i + 1] = contrast;
-                        data[i + 2] = contrast;
-                    }
-
-                    ctx.putImageData(imageData, 0, 0);
-
-                    canvas.toBlob((blob) => {
-                        const url = URL.createObjectURL(blob);
+                
+                // Generate preprocessed image from service
+                if (currentImage.value?.file) {
+                    ocrService.getPreprocessedImageUrl(currentImage.value.file).then(url => {
                         preprocessedImage.value = url;
-                        resolve(blob);
-                    }, 'image/png');
-                };
-
-                img.src = URL.createObjectURL(imageFile);
-            });
-        };
-
-        const testOCRWithConfig = async (imageFile, config) => {
-            // Create worker with proper options for engine mode
-            const workerOptions = {
-                logger: (m) => console.log(`OCR Config ${config.name}:`, m)
-            };
-
-            // Handle OCR engine mode during worker creation
-            let oem = 1; // default
-            if (config.params.tessedit_ocr_engine_mode !== undefined) {
-                oem = parseInt(config.params.tessedit_ocr_engine_mode);
-            }
-
-            const worker = await createWorker('eng', oem, workerOptions);
-
-            try {
-                // Set all other parameters (excluding engine mode)
-                const runtimeParams = { ...config.params };
-                delete runtimeParams.tessedit_ocr_engine_mode; // Remove to avoid error
-
-                if (Object.keys(runtimeParams).length > 0) {
-                    await worker.setParameters(runtimeParams);
+                    });
                 }
-
-                const result = await worker.recognize(imageFile);
-                return {
-                    text: result.data.text.trim(),
-                    confidence: Math.round(result.data.confidence),
-                    config: config.name
-                };
-            } finally {
-                await worker.terminate();
             }
         };
+
+        const testOCRWithConfig = ocrService.testOCRWithConfig;
 
         const parseResult = (text, type) => {
-            if (type === 'time') {
-                const timeMatch = text.match(/(\d{1,2})[:\\/](\d{2})/);
-                return timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : null;
-            } else {
-                const guessMatch = text.match(/(\d+)\/\d+/);
-                return guessMatch ? `${guessMatch[1]}/6` : null;
+            const parsed = ocrService.parseLinkedInGameScore(text, type);
+            if (parsed) {
+                if (type === 'time') {
+                    return `${parsed.minutes}:${parsed.seconds.toString().padStart(2, '0')}`;
+                } else if (type === 'guess') {
+                    return parsed.isDNF ? 'DNF' : `${parsed.guessCount}/6`;
+                }
             }
+            return null;
         };
 
         const analyzeImage = async () => {
@@ -148,16 +63,16 @@ export default {
             analysisResults.value = [];
 
             try {
-                // Test current configuration
+                // Test current configuration - using fixed OCR settings, no character whitelisting
                 const config = {
                     name: 'Current Config',
                     params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '6',
-                        tessedit_ocr_engine_mode: '2'
+                        tessedit_pageseg_mode: '1',
+                        tessedit_ocr_engine_mode: '3'
                     }
                 };
 
+                // Test current configuration (preprocessing now handled automatically in service)
                 const result = await testOCRWithConfig(currentImage.value.file, config);
                 const parsed = parseResult(result.text, gameType.value);
                 const isCorrect = parsed === expectedText.value.trim();
@@ -167,20 +82,6 @@ export default {
                     parsed,
                     isCorrect,
                     rawText: result.text
-                });
-
-                // Also test with preprocessed image
-                const preprocessed = await preprocessImage(currentImage.value.file);
-                const preprocessedResult = await testOCRWithConfig(preprocessed, config);
-                const preprocessedParsed = parseResult(preprocessedResult.text, gameType.value);
-                const preprocessedCorrect = preprocessedParsed === expectedText.value.trim();
-
-                analysisResults.value.push({
-                    ...preprocessedResult,
-                    config: 'Current Config (Preprocessed)',
-                    parsed: preprocessedParsed,
-                    isCorrect: preprocessedCorrect,
-                    rawText: preprocessedResult.text
                 });
             } catch (error) {
                 console.error('Analysis failed:', error);
@@ -200,87 +101,45 @@ export default {
             isTesting.value = true;
             analysisResults.value = [];
 
+            // All configs now use fixed OCR engine mode 3 and pageseg mode 1, no character whitelisting for full context
             const configs = [
                 {
-                    name: 'Default',
+                    name: 'Default (No Restrictions)',
                     params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '6',
-                        tessedit_ocr_engine_mode: '2'
+                        tessedit_pageseg_mode: '1',
+                        tessedit_ocr_engine_mode: '3'
                     }
                 },
                 {
-                    name: 'Large Font - Single Line',
+                    name: 'Lower DPI',
                     params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '7',
-                        tessedit_ocr_engine_mode: '2',
-                        user_defined_dpi: '150', // Lower DPI for large fonts
-                        textord_min_linesize: '2.5', // Adjust for large text
-                        textord_excess_blobsize: '1.3'
+                        tessedit_pageseg_mode: '1',
+                        tessedit_ocr_engine_mode: '3',
+                        user_defined_dpi: '150'
                     }
                 },
                 {
-                    name: 'Large Font - Legacy',
+                    name: 'Very Low DPI',
                     params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '7',
-                        tessedit_ocr_engine_mode: '0',
-                        user_defined_dpi: '150',
+                        tessedit_pageseg_mode: '1',
+                        tessedit_ocr_engine_mode: '3',
+                        user_defined_dpi: '100'
+                    }
+                },
+                {
+                    name: 'High DPI',
+                    params: {
+                        tessedit_pageseg_mode: '1',
+                        tessedit_ocr_engine_mode: '3',
+                        user_defined_dpi: '300'
+                    }
+                },
+                {
+                    name: 'Adjusted Line Size',
+                    params: {
+                        tessedit_pageseg_mode: '1',
+                        tessedit_ocr_engine_mode: '3',
                         textord_min_linesize: '2.0'
-                    }
-                },
-                {
-                    name: 'Large Font - Single Word',
-                    params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '8',
-                        tessedit_ocr_engine_mode: '2',
-                        user_defined_dpi: '150',
-                        textord_min_linesize: '2.0',
-                        classify_bln_numeric_mode: '1'
-                    }
-                },
-                {
-                    name: 'Large Font - Low DPI',
-                    params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '6',
-                        tessedit_ocr_engine_mode: '2',
-                        user_defined_dpi: '100', // Very low DPI for very large fonts
-                        textord_min_linesize: '1.5'
-                    }
-                },
-                {
-                    name: 'Single Column',
-                    params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '4',
-                        tessedit_ocr_engine_mode: '2'
-                    }
-                },
-                {
-                    name: 'Single Text Line',
-                    params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '7',
-                        tessedit_ocr_engine_mode: '2'
-                    }
-                },
-                {
-                    name: 'Single Word',
-                    params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '8',
-                        tessedit_ocr_engine_mode: '2'
-                    }
-                },
-                {
-                    name: 'Legacy Engine',
-                    params: {
-                        tessedit_char_whitelist: '0123456789:/.XDNF',
-                        tessedit_pageseg_mode: '6',
-                        tessedit_ocr_engine_mode: '0'
                     }
                 }
             ];
@@ -377,7 +236,7 @@ export default {
 
                         <!-- Preprocessed Image -->
                         <div v-if="preprocessedImage">
-                            <h4 class="font-medium mb-2">Preprocessed Image</h4>
+                            <h4 class="font-medium mb-2">Preprocessed Image (Background Removal - Tolerance 32)</h4>
                             <img :src="preprocessedImage" alt="Preprocessed" class="max-w-full border rounded" />
                         </div>
                     </div>
@@ -403,15 +262,22 @@ export default {
                     <!-- Results -->
                     <div v-if="analysisResults.length > 0" class="mt-4">
                         <h4 class="font-medium mb-3">OCR Results</h4>
-                        <div class="space-y-2">
-                            <div v-for="(result, index) in analysisResults" :key="index" class="p-3 border rounded" :class="result.isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'">
-                                <div class="grid grid-cols-4 gap-2 text-sm">
+                        <div class="space-y-3">
+                            <div v-for="(result, index) in analysisResults" :key="index" class="p-4 border rounded" :class="result.isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'">
+                                <!-- Header row with config, parsed result, and confidence -->
+                                <div class="grid grid-cols-3 gap-4 text-sm mb-3">
                                     <div><strong>Config:</strong> {{ result.config }}</div>
-                                    <div><strong>Raw Text:</strong> "{{ result.rawText }}"</div>
                                     <div><strong>Parsed:</strong> {{ result.parsed || 'Failed' }}</div>
                                     <div><strong>Confidence:</strong> {{ result.confidence }}%</div>
                                 </div>
-                                <div v-if="result.isCorrect" class="text-green-600 text-sm mt-1">✅ Correct! This configuration works well.</div>
+                                
+                                <!-- Raw text in its own section with proper multiline handling -->
+                                <div class="text-sm">
+                                    <div class="font-semibold mb-2">Raw Text:</div>
+                                    <div class="bg-gray-100 p-2 rounded border font-mono text-xs whitespace-pre-wrap break-words max-h-32 overflow-y-auto">{{ result.rawText || '(empty)' }}</div>
+                                </div>
+                                
+                                <div v-if="result.isCorrect" class="text-green-600 text-sm mt-2">✅ Correct! This configuration works well.</div>
                             </div>
                         </div>
                     </div>

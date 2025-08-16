@@ -72,6 +72,9 @@ export default {
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     imagePreview.value = e.target.result;
+
+                    // Automatically attempt to detect game and score
+                    autoDetectGameAndScore();
                 };
                 reader.readAsDataURL(file);
             }
@@ -101,7 +104,6 @@ export default {
                 });
 
                 const extractedText = await ocrService.extractTextFromImage(scoreImage.value);
-                console.log('Extracted text:', extractedText);
 
                 const gameType = selectedGame.value.scoringType === 1 ? 'guess' : 'time';
                 const parsedScore = ocrService.parseLinkedInGameScore(extractedText, gameType);
@@ -155,6 +157,226 @@ export default {
                 });
             } finally {
                 isParsingOCR.value = false;
+            }
+        };
+
+        // Auto-detect game and score from OCR text
+        const autoDetectGameAndScore = async () => {
+            if (!scoreImage.value) {
+                return;
+            }
+
+            isParsingOCR.value = true;
+
+            try {
+                toast.add({
+                    severity: 'info',
+                    summary: 'Auto-detecting',
+                    detail: 'Analyzing image for game and score...',
+                    life: 3000
+                });
+
+                const extractedText = await ocrService.extractTextFromImage(scoreImage.value);
+
+                // Detect game first
+                const detectedGame = detectGameFromText(extractedText);
+                if (detectedGame) {
+                    selectedGame.value = detectedGame;
+
+                    // Extract score based on detected game type
+                    const scoreResult = extractScoreFromText(extractedText, detectedGame);
+                    if (scoreResult) {
+                        applyDetectedScore(scoreResult, detectedGame);
+
+                        toast.add({
+                            severity: 'success',
+                            summary: 'Auto-detection Success',
+                            detail: `Detected ${detectedGame.name} with score`,
+                            life: 5000
+                        });
+                    } else {
+                        toast.add({
+                            severity: 'warn',
+                            summary: 'Game Detected',
+                            detail: `Found ${detectedGame.name} but could not detect score. Please enter manually.`,
+                            life: 5000
+                        });
+                    }
+                } else {
+                    toast.add({
+                        severity: 'warn',
+                        summary: 'Auto-detection Failed',
+                        detail: 'Could not detect game or score. Please select manually.',
+                        life: 5000
+                    });
+                }
+            } catch (error) {
+                console.error('Auto-detection failed:', error);
+                toast.add({
+                    severity: 'error',
+                    summary: 'Auto-detection Error',
+                    detail: 'Failed to analyze the image. Please try again.',
+                    life: 5000
+                });
+            } finally {
+                isParsingOCR.value = false;
+            }
+        };
+
+        // Detect game from OCR text by searching for game names (case insensitive)
+        // Ignore lines with "avg" or "average" as those contain game averages, not player scores
+        const detectGameFromText = (text) => {
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+
+            // Search for each game name in the text
+            for (const game of games.value) {
+                const gameName = game.name.toLowerCase();
+
+                // Look for the game name in lines that DON'T contain "avg" or "average"
+                for (const line of lines) {
+                    const lowerLine = line.toLowerCase();
+                    if (lowerLine.includes(gameName)) {
+                        return game;
+                    }
+                }
+            }
+
+            return null;
+        };
+
+        // Extract score from text based on game type - search independently across all lines
+        // Ignore lines with "avg" or "average" as those contain game averages
+        const extractScoreFromText = (text, game) => {
+            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+
+            // Filter out lines that contain average information
+            const cleanLines = lines.filter(line => {
+                const lowerLine = line.toLowerCase();
+                return !lowerLine.includes('avg') && !lowerLine.includes('average');
+            });
+
+
+            if (game.scoringType === 2) { // Time-based game
+                return extractTimeScore(cleanLines);
+            } else if (game.scoringType === 1) { // Guess-based game
+                return extractGuessScore(cleanLines);
+            }
+
+            return null;
+        };
+
+        // Extract time score (MM:SS format) - should be just the time on its own line
+        const extractTimeScore = (lines) => {
+            for (const line of lines) {
+                // Clean up "solved in" text and trim
+                const cleanLine = line.replace(/solved\s+in\s*/gi, '').trim();
+                
+                // Look for lines that contain primarily just time patterns
+                const timePatterns = [
+                    /^(\d{1,2}):(\d{2})$/,  // Exact match: just MM:SS
+                    /^(\d{1,2})\/(\d{2})$/, // Exact match: just MM/SS
+                    /^\s*(\d{1,2}):(\d{2})\s*$/, // With possible whitespace
+                    /^\s*(\d{1,2})\/(\d{2})\s*$/ // With possible whitespace
+                ];
+
+                for (const pattern of timePatterns) {
+                    const match = cleanLine.match(pattern);
+                    if (match) {
+                        const minutes = parseInt(match[1]);
+                        const seconds = parseInt(match[2]);
+
+                        if (minutes >= 0 && minutes < 60 && seconds >= 0 && seconds < 60) {
+                            return { type: 'time', minutes, seconds };
+                        }
+                    }
+                }
+            }
+            return null;
+        };
+
+        // Extract guess score (# guesses or DNF) - should contain "guess/guesses" word
+        const extractGuessScore = (lines) => {
+            for (const line of lines) {
+                // Clean up "solved in" text and trim
+                const cleanLine = line.replace(/solved\s+in\s*/gi, '').trim();
+                const lowerLine = cleanLine.toLowerCase();
+
+                // Check for DNF patterns first, including "better luck next time"
+                const dnfPatterns = [
+                    /better\s*luck\s*next\s*time/gi,
+                    /dnf/gi,
+                    /did\s*not\s*finish/gi,
+                    /x\s*\/\s*\d+/gi,
+                    /failed/gi,
+                    /ran\s*out/gi,
+                    /no\s*luck/gi,
+                    /try\s*again/gi
+                ];
+
+                for (const pattern of dnfPatterns) {
+                    if (pattern.test(lowerLine)) {
+                        return { type: 'guess', isDNF: true };
+                    }
+                }
+
+                // Look for guess patterns - prioritize lines that contain "guess" or "guesses"
+                if (lowerLine.includes('guess')) {
+                    const guessPatterns = [
+                        /(\d+)\s*guesses?/gi,
+                        /(\d+)\s*guess/gi,
+                        /guess\s*(\d+)/gi,
+                        /in\s*(\d+)\s*guesses?/gi
+                    ];
+
+                    for (const pattern of guessPatterns) {
+                        const matches = [...cleanLine.matchAll(pattern)];
+                        for (const match of matches) {
+                            const guesses = parseInt(match[1]);
+                            if (guesses >= 1 && guesses <= 10) {
+                                return { type: 'guess', guessCount: guesses };
+                            }
+                        }
+                    }
+                }
+
+                // Fallback: look for other attempt patterns if no "guess" word found
+                const fallbackPatterns = [
+                    /(\d+)\s*\/\s*\d+/gi,
+                    /attempt\s*(\d+)/gi,
+                    /try\s*(\d+)/gi,
+                    /(\d+)\s*tries/gi
+                ];
+
+                for (const pattern of fallbackPatterns) {
+                    const matches = [...cleanLine.matchAll(pattern)];
+                    for (const match of matches) {
+                        const guesses = parseInt(match[1]);
+                        if (guesses >= 1 && guesses <= 10) {
+                            return { type: 'guess', guessCount: guesses };
+                        }
+                    }
+                }
+            }
+            return null;
+        };
+
+        // Apply detected score to form fields
+        const applyDetectedScore = (scoreResult, game) => {
+            if (scoreResult.type === 'time') {
+                minutes.value = scoreResult.minutes;
+                seconds.value = scoreResult.seconds;
+                ranOutOfGuesses.value = false;
+                guessCount.value = null;
+            } else if (scoreResult.type === 'guess') {
+                if (scoreResult.isDNF) {
+                    ranOutOfGuesses.value = true;
+                    guessCount.value = null;
+                } else {
+                    guessCount.value = scoreResult.guessCount;
+                    ranOutOfGuesses.value = false;
+                }
+                minutes.value = null;
+                seconds.value = null;
             }
         };
 
@@ -275,7 +497,8 @@ export default {
             clearForm,
             handleImageUpload,
             removeImage,
-            parseScoreFromImage
+            parseScoreFromImage,
+            autoDetectGameAndScore
         };
     }
 };
@@ -346,9 +569,14 @@ export default {
                         </div>
                         <img :src="imagePreview" alt="Score preview" class="max-w-full max-h-48 object-contain border rounded" />
 
-                        <div v-if="selectedGame" class="mt-3">
-                            <Button icon="pi pi-eye" label="Parse Score from Image" class="w-full" size="small" :loading="isParsingOCR" @click="parseScoreFromImage" :disabled="!selectedGame" />
-                            <small class="text-gray-500 text-xs block mt-1"> Uses OCR to automatically detect and fill in your score from the screenshot </small>
+                        <div class="mt-3 space-y-2">
+                            <Button icon="pi pi-search" label="Auto-detect Game & Score" class="w-full" size="small" :loading="isParsingOCR" @click="autoDetectGameAndScore" />
+                            <small class="text-gray-500 text-xs block"> Automatically detects the game name and score from the screenshot </small>
+
+                            <div v-if="selectedGame">
+                                <Button icon="pi pi-eye" label="Parse Score Only" class="w-full" size="small" :loading="isParsingOCR" @click="parseScoreFromImage" :disabled="!selectedGame" />
+                                <small class="text-gray-500 text-xs block"> Uses OCR to detect score for the selected game </small>
+                            </div>
                         </div>
                     </div>
                 </div>
