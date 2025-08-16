@@ -217,7 +217,6 @@ export default {
                                         <div v-for="(player, index) in champion.champions" :key="player.id" class="flex items-center space-x-1 bg-white bg-opacity-70 rounded-full px-2 py-1">
                                             <Avatar :label="player.playerName.charAt(0).toUpperCase()" size="small" />
                                             <span class="text-sm font-medium text-gray-900">{{ player.playerName }}</span>
-                                            <span v-if="index < champion.champions.length - 1" class="text-gray-400">•</span>
                                         </div>
                                     </div>
                                 </div>
