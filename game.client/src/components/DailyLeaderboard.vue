@@ -258,6 +258,66 @@ export default {
             }
 
             return isTied ? 'T' + actualRank : actualRank;
+        },
+        getRankInfo(index, currentScore, scores) {
+            // Calculate actual rank position (1, 2, 3, etc.)
+            let actualRank = 1;
+            let isTied = false;
+
+            if (index === 0) {
+                actualRank = 1;
+            } else {
+                // Find actual rank by counting unique better scores
+                for (let i = 0; i < index; i++) {
+                    const prevScore = scores[i];
+                    let isBetter = false;
+
+                    if (this.selectedGame?.scoringType === 1) {
+                        // Guess-based: lower is better, but DNF (99) is worst
+                        if (currentScore.guessCount === 99 && prevScore.guessCount === 99) {
+                            isBetter = false; // Both DNF, tied
+                        } else if (prevScore.guessCount === 99) {
+                            isBetter = false; // Previous is DNF, current is better
+                        } else if (currentScore.guessCount === 99) {
+                            isBetter = true; // Current is DNF, previous is better
+                        } else {
+                            isBetter = prevScore.guessCount < currentScore.guessCount;
+                        }
+                    } else if (this.selectedGame?.scoringType === 2) {
+                        // Time-based: lower is better
+                        isBetter = prevScore.score < currentScore.score;
+                    } else {
+                        // Score-based: higher is better
+                        isBetter = prevScore.score > currentScore.score;
+                    }
+
+                    if (isBetter) {
+                        actualRank++;
+                    }
+                }
+            }
+
+            // Check if tied with any other score (previous or next)
+            const isScoreEqual = (score1, score2) => {
+                if (this.selectedGame?.scoringType === 1) {
+                    return score1.guessCount === score2.guessCount;
+                } else if (this.selectedGame?.scoringType === 2) {
+                    return score1.score === score2.score;
+                } else {
+                    return score1.score === score2.score;
+                }
+            };
+
+            // Check if tied with previous score
+            if (index > 0 && isScoreEqual(currentScore, scores[index - 1])) {
+                isTied = true;
+            }
+            // Check if tied with next score
+            else if (index < scores.length - 1 && isScoreEqual(currentScore, scores[index + 1])) {
+                isTied = true;
+            }
+
+            return { actualRank, isTied };
         }
     }
 };
@@ -289,7 +349,28 @@ export default {
                 <DataTable :value="scores" :rows="10" :paginator="scores.length > 10" responsiveLayout="scroll">
                     <Column field="rank" header="Rank" class="w-16">
                         <template #body="{ data, index }">
-                            <Badge :value="getRankDisplay(index, data, scores)" :severity="getBadgeSeverity(index)" />
+                            <div class="flex justify-center items-center gap-1">
+                                <template v-if="getRankInfo(index, data, scores).actualRank <= 3">
+                                    <!-- Medal icons with matching colored numbers for top 3 actual ranks -->
+                                    <div v-if="getRankInfo(index, data, scores).actualRank === 1" class="flex items-center gap-1">
+                                        <i class="pi pi-trophy text-xl" title="1st Place - Gold Medal" style="color: #DAA520;"></i>
+                                        <span class="text-sm font-bold" style="color: #DAA520;">1</span>
+                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #DAA520;">T</span>
+                                    </div>
+                                    <div v-else-if="getRankInfo(index, data, scores).actualRank === 2" class="flex items-center gap-1">
+                                        <i class="pi pi-trophy text-xl" title="2nd Place - Silver Medal" style="color: #C0C0C0;"></i>
+                                        <span class="text-sm font-bold" style="color: #C0C0C0;">2</span>
+                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #C0C0C0;">T</span>
+                                    </div>
+                                    <div v-else-if="getRankInfo(index, data, scores).actualRank === 3" class="flex items-center gap-1">
+                                        <i class="pi pi-trophy text-xl" title="3rd Place - Bronze Medal" style="color: #CD7F32;"></i>
+                                        <span class="text-sm font-bold" style="color: #CD7F32;">3</span>
+                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #CD7F32;">T</span>
+                                    </div>
+                                </template>
+                                <!-- Regular rank badges for 4+ -->
+                                <Badge v-else :value="getRankDisplay(index, data, scores)" />
+                            </div>
                         </template>
                     </Column>
 
