@@ -1,18 +1,29 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { AdminService } from '@/services/adminService.js';
 
 import AppMenuItem from './AppMenuItem.vue';
 
-const model = ref([
-    {
-        label: 'LinkedIn Games',
-        items: [
-            { label: 'Game Scores', icon: 'pi pi-fw pi-trophy', to: '/' },
-            { label: 'Admin Panel', icon: 'pi pi-fw pi-cog', to: '/admin' },
-            { label: 'OCR Training', icon: 'pi pi-fw pi-eye', to: '/ocr-training' }
-        ]
+const adminService = new AdminService();
+
+const model = computed(() => {
+    const menuItems = [
+        { label: 'Game Scores', icon: 'pi pi-fw pi-trophy', to: '/' },
+        { label: 'Admin Panel', icon: 'pi pi-fw pi-cog', to: '/admin' }
+    ];
+
+    // Only show OCR Training if authenticated
+    if (adminService.isAuthenticated()) {
+        menuItems.push({ label: 'OCR Training', icon: 'pi pi-fw pi-eye', to: '/ocr-training' });
     }
-]);
+
+    return [
+        {
+            label: 'LinkedIn Games',
+            items: menuItems
+        }
+    ];
+});
 </script>
 
 <template>
