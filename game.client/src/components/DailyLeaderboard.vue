@@ -353,19 +353,19 @@ export default {
                                 <template v-if="getRankInfo(index, data, scores).actualRank <= 3">
                                     <!-- Medal icons with matching colored numbers for top 3 actual ranks -->
                                     <div v-if="getRankInfo(index, data, scores).actualRank === 1" class="flex items-center gap-1">
-                                        <i class="pi pi-trophy text-xl" title="1st Place - Gold Medal" style="color: #DAA520;"></i>
-                                        <span class="text-sm font-bold" style="color: #DAA520;">1</span>
-                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #DAA520;">T</span>
+                                        <i class="pi pi-trophy text-xl" title="1st Place - Gold Medal" style="color: #daa520"></i>
+                                        <span class="text-sm font-bold" style="color: #daa520">1</span>
+                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #daa520">T</span>
                                     </div>
                                     <div v-else-if="getRankInfo(index, data, scores).actualRank === 2" class="flex items-center gap-1">
-                                        <i class="pi pi-trophy text-xl" title="2nd Place - Silver Medal" style="color: #C0C0C0;"></i>
-                                        <span class="text-sm font-bold" style="color: #C0C0C0;">2</span>
-                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #C0C0C0;">T</span>
+                                        <i class="pi pi-trophy text-xl" title="2nd Place - Silver Medal" style="color: #c0c0c0"></i>
+                                        <span class="text-sm font-bold" style="color: #c0c0c0">2</span>
+                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #c0c0c0">T</span>
                                     </div>
                                     <div v-else-if="getRankInfo(index, data, scores).actualRank === 3" class="flex items-center gap-1">
-                                        <i class="pi pi-trophy text-xl" title="3rd Place - Bronze Medal" style="color: #CD7F32;"></i>
-                                        <span class="text-sm font-bold" style="color: #CD7F32;">3</span>
-                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #CD7F32;">T</span>
+                                        <i class="pi pi-trophy text-xl" title="3rd Place - Bronze Medal" style="color: #cd7f32"></i>
+                                        <span class="text-sm font-bold" style="color: #cd7f32">3</span>
+                                        <span v-if="getRankInfo(index, data, scores).isTied" class="text-xs font-bold" style="color: #cd7f32">T</span>
                                     </div>
                                 </template>
                                 <!-- Regular rank badges for 4+ -->

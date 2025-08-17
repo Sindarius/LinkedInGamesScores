@@ -12,7 +12,7 @@ export default defineConfig({
         include: ['tesseract.js']
     },
     define: {
-        global: 'globalThis',
+        global: 'globalThis'
     },
     plugins: [
         vue(),

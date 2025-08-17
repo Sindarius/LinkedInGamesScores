@@ -1,18 +1,18 @@
 import { reactive, watch } from 'vue';
-import { $t, updatePreset, updateSurfacePalette } from '@primeuix/themes';
+import { $t } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
 import Lara from '@primeuix/themes/lara';
 import Nora from '@primeuix/themes/nora';
 
-const THEME_STORAGE_KEY = 'gameScores_themePreferences';
+export const THEME_STORAGE_KEY = 'gameScores_themePreferences';
 
-const presets = {
+export const presets = {
     Aura,
     Lara,
     Nora
 };
 
-const primaryColors = [
+export const primaryColors = [
     { name: 'noir', palette: {} },
     { name: 'emerald', palette: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b', 950: '#022c22' } },
     { name: 'green', palette: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d', 950: '#052e16' } },
@@ -32,7 +32,7 @@ const primaryColors = [
     { name: 'rose', palette: { 50: '#fff1f2', 100: '#ffe4e6', 200: '#fecdd3', 300: '#fda4af', 400: '#fb7185', 500: '#f43f5e', 600: '#e11d48', 700: '#be123c', 800: '#9f1239', 900: '#881337', 950: '#4c0519' } }
 ];
 
-const surfaces = [
+export const surfaces = [
     {
         name: 'slate',
         palette: { 0: '#ffffff', 50: '#f8fafc', 100: '#f1f5f9', 200: '#e2e8f0', 300: '#cbd5e1', 400: '#94a3b8', 500: '#64748b', 600: '#475569', 700: '#334155', 800: '#1e293b', 900: '#0f172a', 950: '#020617' }
@@ -67,16 +67,16 @@ const surfaces = [
     }
 ];
 
-const defaultTheme = {
+export const defaultTheme = {
     preset: 'Aura',
     primary: 'emerald',
-    surface: null,
+    surface: null, // null means use preset default
     darkTheme: false,
     menuMode: 'static'
 };
 
 // Load saved theme preferences from localStorage
-const loadThemeFromStorage = () => {
+export const loadThemeFromStorage = () => {
     try {
         const saved = localStorage.getItem(THEME_STORAGE_KEY);
         if (saved) {
@@ -99,7 +99,15 @@ const saveThemeToStorage = (theme) => {
 };
 
 // Helper functions for theme application
-function getPresetExt(primary) {
+export function applyDarkModeClass(isDark) {
+    if (isDark) {
+        document.documentElement.classList.add('app-dark');
+    } else {
+        document.documentElement.classList.remove('app-dark');
+    }
+}
+
+export function getPresetExt(primary) {
     const color = primaryColors.find((c) => c.name === primary);
 
     if (color.name === 'noir') {
@@ -191,32 +199,29 @@ function getPresetExt(primary) {
 
 function applyThemeSettings(theme) {
     // Apply dark mode class
-    if (theme.darkTheme) {
-        document.documentElement.classList.add('app-dark');
-    } else {
-        document.documentElement.classList.remove('app-dark');
-    }
+    applyDarkModeClass(theme.darkTheme);
 
-    // Apply PrimeVue theme
+    // Apply PrimeVue theme changes
     const presetValue = presets[theme.preset];
     const surfacePalette = theme.surface ? surfaces.find((s) => s.name === theme.surface)?.palette : null;
-    
+
     if (presetValue) {
-        const primeuiTheme = $t().preset(presetValue).preset(getPresetExt(theme.primary));
-        
+        // Update theme configuration for dynamic changes
+        const primeuiTheme = $t()
+            .preset(presetValue)
+            .preset(getPresetExt(theme.primary));
+
         if (surfacePalette) {
             primeuiTheme.surfacePalette(surfacePalette);
         }
-        
+
+        // Use useDefaultOptions: true to preserve default surface styling for light/dark themes
         primeuiTheme.use({ useDefaultOptions: true });
     }
 }
 
 // Create reactive theme store
 const themeStore = reactive(loadThemeFromStorage());
-
-// Apply theme on initialization
-applyThemeSettings(themeStore);
 
 // Watch for changes and save to localStorage + apply themes
 watch(

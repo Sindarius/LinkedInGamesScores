@@ -25,7 +25,8 @@ export default {
             totalScores: 0,
             activePlayers: 0,
             gamesCount: 0,
-            gameService: new GameService()
+            gameService: new GameService(),
+            isRefreshing: false
         };
     },
     async mounted() {
@@ -57,6 +58,34 @@ export default {
                 this.activePlayers = new Set(allScores.map((score) => score.playerName)).size;
             } catch (error) {
                 console.error('Error loading stats:', error);
+            }
+        },
+        async onFullRefresh() {
+            this.isRefreshing = true;
+            try {
+                // Trigger refresh for all components
+                this.refreshTrigger++;
+
+                // Reload stats
+                await this.loadStats();
+
+                // Show success message
+                this.$toast.add({
+                    severity: 'success',
+                    summary: 'Refreshed',
+                    detail: 'All game data and times have been updated',
+                    life: 3000
+                });
+            } catch (error) {
+                console.error('Error during full refresh:', error);
+                this.$toast.add({
+                    severity: 'error',
+                    summary: 'Refresh Failed',
+                    detail: 'Failed to refresh game data',
+                    life: 5000
+                });
+            } finally {
+                this.isRefreshing = false;
             }
         }
     }
@@ -91,6 +120,7 @@ export default {
                                 severity="secondary"
                                 class="px-4 py-2"
                             />
+                            <Button label="Refresh" icon="pi pi-refresh" @click="onFullRefresh" severity="info" class="px-4 py-2" :loading="isRefreshing" title="Refresh all game data and times" />
                         </div>
                     </div>
                     <div class="text-center text-lg font-medium text-blue-600 mt-4">📅 Viewing scores for {{ formatSelectedDate() }}</div>

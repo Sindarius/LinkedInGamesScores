@@ -32,10 +32,10 @@ export default {
                 // Reset previous results
                 analysisResults.value = [];
                 preprocessedImage.value = null;
-                
+
                 // Generate preprocessed image from service
                 if (currentImage.value?.file) {
-                    ocrService.getPreprocessedImageUrl(currentImage.value.file).then(url => {
+                    ocrService.getPreprocessedImageUrl(currentImage.value.file).then((url) => {
                         preprocessedImage.value = url;
                     });
                 }
@@ -270,13 +270,13 @@ export default {
                                     <div><strong>Parsed:</strong> {{ result.parsed || 'Failed' }}</div>
                                     <div><strong>Confidence:</strong> {{ result.confidence }}%</div>
                                 </div>
-                                
+
                                 <!-- Raw text in its own section with proper multiline handling -->
                                 <div class="text-sm">
                                     <div class="font-semibold mb-2">Raw Text:</div>
                                     <div class="bg-gray-100 p-2 rounded border font-mono text-xs whitespace-pre-wrap break-words max-h-32 overflow-y-auto">{{ result.rawText || '(empty)' }}</div>
                                 </div>
-                                
+
                                 <div v-if="result.isCorrect" class="text-green-600 text-sm mt-2">✅ Correct! This configuration works well.</div>
                             </div>
                         </div>

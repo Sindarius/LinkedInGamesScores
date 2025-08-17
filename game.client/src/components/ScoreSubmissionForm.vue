@@ -226,7 +226,10 @@ export default {
         // Detect game from OCR text by searching for game names (case insensitive)
         // Ignore lines with "avg" or "average" as those contain game averages, not player scores
         const detectGameFromText = (text) => {
-            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+            const lines = text
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
 
             // Search for each game name in the text
             for (const game of games.value) {
@@ -247,18 +250,22 @@ export default {
         // Extract score from text based on game type - search independently across all lines
         // Ignore lines with "avg" or "average" as those contain game averages
         const extractScoreFromText = (text, game) => {
-            const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+            const lines = text
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
 
             // Filter out lines that contain average information
-            const cleanLines = lines.filter(line => {
+            const cleanLines = lines.filter((line) => {
                 const lowerLine = line.toLowerCase();
                 return !lowerLine.includes('avg') && !lowerLine.includes('average');
             });
 
-
-            if (game.scoringType === 2) { // Time-based game
+            if (game.scoringType === 2) {
+                // Time-based game
                 return extractTimeScore(cleanLines);
-            } else if (game.scoringType === 1) { // Guess-based game
+            } else if (game.scoringType === 1) {
+                // Guess-based game
                 return extractGuessScore(cleanLines);
             }
 
@@ -270,10 +277,10 @@ export default {
             for (const line of lines) {
                 // Clean up "solved in" text and trim
                 const cleanLine = line.replace(/solved\s+in\s*/gi, '').trim();
-                
+
                 // Look for lines that contain primarily just time patterns
                 const timePatterns = [
-                    /^(\d{1,2}):(\d{2})$/,  // Exact match: just MM:SS
+                    /^(\d{1,2}):(\d{2})$/, // Exact match: just MM:SS
                     /^(\d{1,2})\/(\d{2})$/, // Exact match: just MM/SS
                     /^\s*(\d{1,2}):(\d{2})\s*$/, // With possible whitespace
                     /^\s*(\d{1,2})\/(\d{2})\s*$/ // With possible whitespace
@@ -302,16 +309,7 @@ export default {
                 const lowerLine = cleanLine.toLowerCase();
 
                 // Check for DNF patterns first, including "better luck next time"
-                const dnfPatterns = [
-                    /better\s*luck\s*next\s*time/gi,
-                    /dnf/gi,
-                    /did\s*not\s*finish/gi,
-                    /x\s*\/\s*\d+/gi,
-                    /failed/gi,
-                    /ran\s*out/gi,
-                    /no\s*luck/gi,
-                    /try\s*again/gi
-                ];
+                const dnfPatterns = [/better\s*luck\s*next\s*time/gi, /dnf/gi, /did\s*not\s*finish/gi, /x\s*\/\s*\d+/gi, /failed/gi, /ran\s*out/gi, /no\s*luck/gi, /try\s*again/gi];
 
                 for (const pattern of dnfPatterns) {
                     if (pattern.test(lowerLine)) {
@@ -321,12 +319,7 @@ export default {
 
                 // Look for guess patterns - prioritize lines that contain "guess" or "guesses"
                 if (lowerLine.includes('guess')) {
-                    const guessPatterns = [
-                        /(\d+)\s*guesses?/gi,
-                        /(\d+)\s*guess/gi,
-                        /guess\s*(\d+)/gi,
-                        /in\s*(\d+)\s*guesses?/gi
-                    ];
+                    const guessPatterns = [/(\d+)\s*guesses?/gi, /(\d+)\s*guess/gi, /guess\s*(\d+)/gi, /in\s*(\d+)\s*guesses?/gi];
 
                     for (const pattern of guessPatterns) {
                         const matches = [...cleanLine.matchAll(pattern)];
@@ -340,12 +333,7 @@ export default {
                 }
 
                 // Fallback: look for other attempt patterns if no "guess" word found
-                const fallbackPatterns = [
-                    /(\d+)\s*\/\s*\d+/gi,
-                    /attempt\s*(\d+)/gi,
-                    /try\s*(\d+)/gi,
-                    /(\d+)\s*tries/gi
-                ];
+                const fallbackPatterns = [/(\d+)\s*\/\s*\d+/gi, /attempt\s*(\d+)/gi, /try\s*(\d+)/gi, /(\d+)\s*tries/gi];
 
                 for (const pattern of fallbackPatterns) {
                     const matches = [...cleanLine.matchAll(pattern)];

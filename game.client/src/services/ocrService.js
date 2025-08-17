@@ -53,7 +53,6 @@ async function recognizeText(imageFile) {
             data: { text, confidence }
         } = await worker.recognize(imageToProcess);
 
-
         return { text, confidence };
     } catch (error) {
         console.error('OCR Error:', error);
@@ -191,9 +190,11 @@ async function recognizeWithPreprocessing(imageFile) {
 
 // Helper methods for LinkedIn game score parsing
 function parseLinkedInGameScore(text, gameType) {
-
     // Split text into lines and try parsing each line
-    const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+    const lines = text
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
 
     // Try parsing the full text first (existing behavior)
     const cleanText = text.replace(/\s+/g, ' ').trim();
@@ -226,7 +227,7 @@ function parseLinkedInGameScore(text, gameType) {
 function parseTimeScore(text) {
     // Clean up "solved in" text and trim
     const cleanText = text.replace(/solved\s+in\s*/gi, '').trim();
-    
+
     // Look for time patterns like "1:23", "0:45", "2:15", etc.
     const timePatterns = [
         /(\d{1,2}):(\d{2})/g, // Standard MM:SS format
@@ -273,7 +274,7 @@ function parseTimeScore(text) {
 function parseGuessScore(text) {
     // Clean up "solved in" text and trim
     const cleanText = text.replace(/solved\s+in\s*/gi, '').trim();
-    
+
     // Enhanced LinkedIn-specific guess count patterns
     const guessPatterns = [
         /(\d+)\s*\/\s*[6789]/g, // LinkedIn format like "3/6", "4/6", "5/7", etc.
