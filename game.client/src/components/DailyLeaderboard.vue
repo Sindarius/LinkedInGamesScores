@@ -31,7 +31,8 @@ export default {
                 visible: false,
                 url: null,
                 x: 0,
-                y: 0
+                y: 0,
+                scoreId: null
             },
             isMobile: false
         };
@@ -44,6 +45,18 @@ export default {
         window.addEventListener('resize', () => {
             this.isMobile = window.innerWidth <= 768;
         });
+
+        // Add global mouse leave detection to fix stuck hover states
+        document.addEventListener('mouseleave', this.clearHoverThumbnail);
+        window.addEventListener('scroll', this.clearHoverThumbnail);
+        window.addEventListener('resize', this.clearHoverThumbnail);
+    },
+    beforeUnmount() {
+        // Clean up hover thumbnail and event listeners
+        this.clearHoverThumbnail();
+        document.removeEventListener('mouseleave', this.clearHoverThumbnail);
+        window.removeEventListener('scroll', this.clearHoverThumbnail);
+        window.removeEventListener('resize', this.clearHoverThumbnail);
     },
     watch: {
         gameId: {
@@ -183,6 +196,9 @@ export default {
         async handleImageHover(scoreId, event) {
             if (this.isMobile) return; // Don't show hover on mobile
 
+            // Clear any existing hover thumbnail first
+            this.clearHoverThumbnail();
+
             try {
                 const thumbnailBlob = await this.gameService.getScoreImageThumbnail(scoreId, 400, 300);
                 if (thumbnailBlob) {
@@ -190,17 +206,28 @@ export default {
                     this.hoverThumbnail.x = event.clientX + 10;
                     this.hoverThumbnail.y = event.clientY + 10;
                     this.hoverThumbnail.visible = true;
+                    this.hoverThumbnail.scoreId = scoreId; // Track which image we're showing
                 }
             } catch (error) {
                 console.error('Error loading thumbnail:', error);
+                this.clearHoverThumbnail();
             }
         },
         handleImageHoverOut() {
+            // Use a small delay to prevent flicker when moving between hover area and thumbnail
+            setTimeout(() => {
+                this.clearHoverThumbnail();
+            }, 100);
+        },
+        clearHoverThumbnail() {
             if (this.hoverThumbnail.url) {
                 URL.revokeObjectURL(this.hoverThumbnail.url);
             }
             this.hoverThumbnail.visible = false;
             this.hoverThumbnail.url = null;
+            this.hoverThumbnail.x = 0;
+            this.hoverThumbnail.y = 0;
+            this.hoverThumbnail.scoreId = null;
         },
         handleImageClick(scoreId) {
             if (this.isMobile) {
@@ -412,6 +439,7 @@ export default {
                                 @click="handleImageClick(data.id)"
                                 @mouseenter="handleImageHover(data.id, $event)"
                                 @mouseleave="handleImageHoverOut"
+                                @mouseout="clearHoverThumbnail"
                                 :title="isMobile ? 'Tap to view screenshot' : 'Hover to preview, click to view full size'"
                             ></i>
                             <i v-else class="pi pi-minus text-gray-400" title="No screenshot"></i>
@@ -447,6 +475,7 @@ export default {
             top: hoverThumbnail.y + 'px',
             maxWidth: '400px'
         }"
+        @mouseenter="clearHoverThumbnail"
     >
         <img :src="hoverThumbnail.url" alt="Score thumbnail" class="max-w-full max-h-32 object-contain" />
     </div>
