@@ -20,9 +20,10 @@ namespace game.api.Controllers
         [HttpGet("daily-champions")]
         public async Task<ActionResult<IEnumerable<DailyChampionsDto>>> GetDailyChampions([FromQuery] DateTime? date = null)
         {
-            var target = (date ?? DateTime.UtcNow).Date;
-            var start = target;
-            var end = target.AddDays(1);
+            // Normalize to UTC date window [start, end)
+            var baseDate = (date?.Date) ?? DateTime.UtcNow.Date;
+            var start = DateTime.SpecifyKind(baseDate, DateTimeKind.Utc);
+            var end = start.AddDays(1);
 
             var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
 

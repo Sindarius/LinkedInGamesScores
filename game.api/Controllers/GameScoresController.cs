@@ -164,9 +164,10 @@ namespace game.api.Controllers
             var game = await _context.Games.FindAsync(gameId);
             if (game == null) return NotFound();
 
-            var target = (date ?? DateTime.UtcNow).Date;
-            var start = target;
-            var end = target.AddDays(1);
+            // Normalize to UTC date window [start, end)
+            var baseDate = (date?.Date) ?? DateTime.UtcNow.Date;
+            var start = DateTime.SpecifyKind(baseDate, DateTimeKind.Utc);
+            var end = start.AddDays(1);
 
             var query = _context.GameScores
                 .Where(gs => gs.GameId == gameId && gs.DateAchieved >= start && gs.DateAchieved < end);
