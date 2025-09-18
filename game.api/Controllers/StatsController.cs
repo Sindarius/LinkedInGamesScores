@@ -1,0 +1,144 @@
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using game.api.Data;
+using game.api.Models;
+
+namespace game.api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class StatsController : ControllerBase
+    {
+        private readonly GameContext _context;
+
+        public StatsController(GameContext context)
+        {
+            _context = context;
+        }
+
+        // GET api/stats/top-winners?days=7&top=5&gameId=optional
+        [HttpGet("top-winners")]
+        public async Task<ActionResult<TopWinnersTrendDto>> GetTopWinners([FromQuery] int days = 7, [FromQuery] int top = 5, [FromQuery] int? gameId = null)
+        {
+            days = Math.Clamp(days, 1, 31);
+            top = Math.Clamp(top, 1, 20);
+
+            var endDate = DateTime.UtcNow.Date.AddDays(1); // exclusive upper bound
+            var startDate = endDate.AddDays(-days);
+
+            var labels = Enumerable.Range(0, days)
+                .Select(i => startDate.AddDays(i).ToString("yyyy-MM-dd"))
+                .ToList();
+
+            var dateIndex = new Dictionary<DateTime, int>();
+            for (int i = 0; i < days; i++)
+            {
+                dateIndex[startDate.AddDays(i)] = i;
+            }
+
+            var query = _context.GameScores
+                .Include(gs => gs.Game)
+                .Where(gs => gs.DateAchieved >= startDate && gs.DateAchieved < endDate);
+
+            if (gameId.HasValue)
+            {
+                query = query.Where(gs => gs.GameId == gameId.Value);
+            }
+
+            var scores = await query.ToListAsync();
+
+            // Determine daily winners per game, then aggregate across games per day.
+            var winnersByDay = new Dictionary<DateTime, List<GameScore>>();
+
+            foreach (var group in scores.GroupBy(s => new { s.GameId, Day = s.DateAchieved.Date }))
+            {
+                var day = group.Key.Day;
+                var scoringType = group.First().Game?.ScoringType ?? ScoringType.Guesses;
+
+                // Select all winners (ties) for this game and day
+                IEnumerable<GameScore> winnersForGroup = Enumerable.Empty<GameScore>();
+                if (scoringType == ScoringType.Time)
+                {
+                    var valid = group.Where(s => s.CompletionTime.HasValue).ToList();
+                    if (valid.Count > 0)
+                    {
+                        var best = valid.Min(s => s.CompletionTime!.Value);
+                        winnersForGroup = valid.Where(s => s.CompletionTime!.Value == best);
+                    }
+                }
+                else
+                {
+                    var valid = group.Where(s => s.GuessCount.HasValue).ToList();
+                    if (valid.Count > 0)
+                    {
+                        var best = valid.Min(s => s.GuessCount!.Value);
+                        winnersForGroup = valid.Where(s => s.GuessCount!.Value == best);
+                    }
+                }
+
+                if (dateIndex.ContainsKey(day))
+                {
+                    if (!winnersByDay.TryGetValue(day, out var list))
+                    {
+                        list = new List<GameScore>();
+                        winnersByDay[day] = list;
+                    }
+
+                    // Deduplicate winners by identity (LinkedIn URL or name)
+                    var distinctWinners = winnersForGroup
+                        .GroupBy(w => string.IsNullOrWhiteSpace(w.LinkedInProfileUrl)
+                            ? w.PlayerName.Trim().ToLowerInvariant()
+                            : w.LinkedInProfileUrl!.Trim().ToLowerInvariant())
+                        .Select(g => g.First());
+
+                    list.AddRange(distinctWinners);
+                }
+            }
+
+            // Aggregate into series per player
+            var seriesMap = new Dictionary<string, TopWinnersSeriesDto>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var kvp in winnersByDay)
+            {
+                var day = kvp.Key;
+                var idx = dateIndex[day];
+                foreach (var w in kvp.Value)
+                {
+                    var key = !string.IsNullOrWhiteSpace(w.LinkedInProfileUrl) ? w.LinkedInProfileUrl!.Trim().ToLowerInvariant() : w.PlayerName.Trim().ToLowerInvariant();
+                    if (!seriesMap.TryGetValue(key, out var s))
+                    {
+                        s = new TopWinnersSeriesDto
+                        {
+                            PlayerId = key,
+                            PlayerName = w.PlayerName,
+                            ProfileUrl = string.IsNullOrWhiteSpace(w.LinkedInProfileUrl) ? null : w.LinkedInProfileUrl,
+                            Data = Enumerable.Repeat(0, days).ToArray()
+                        };
+                        seriesMap[key] = s;
+                    }
+                    s.Data[idx] += 1; // may have multiple wins across games in same day
+                }
+            }
+
+            foreach (var s in seriesMap.Values)
+            {
+                s.Total = s.Data.Sum();
+            }
+
+            var topSeries = seriesMap.Values
+                .OrderByDescending(s => s.Total)
+                .ThenBy(s => s.PlayerName)
+                .Take(top)
+                .ToList();
+
+            var result = new TopWinnersTrendDto
+            {
+                Days = days,
+                Labels = labels,
+                Series = topSeries
+            };
+
+            return Ok(result);
+        }
+    }
+}

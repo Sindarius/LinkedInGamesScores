@@ -1,6 +1,7 @@
 <script>
 import ScoreSubmissionForm from '@/components/ScoreSubmissionForm.vue';
 import GameTabs from '@/components/GameTabs.vue';
+import WinsTrendChart from '@/components/WinsTrendChart.vue';
 import { GameService } from '@/services/gameService.js';
 import { useDateStore } from '@/stores/dateStore.js';
 
@@ -160,6 +161,10 @@ export default {
                     </div>
                 </template>
             </Card>
+        </div>
+
+        <div class="mt-8">
+            <WinsTrendChart :days="7" :top="5" :refreshKey="refreshTrigger" />
         </div>
     </div>
 </template>

@@ -19,6 +19,16 @@ namespace game.api.Data
                 .WithMany(g => g.Scores)
                 .HasForeignKey(gs => gs.GameId);
 
+            // Performance indexes for common query patterns
+            // Frequently filter/sort by date and game
+            modelBuilder.Entity<GameScore>()
+                .HasIndex(gs => gs.DateAchieved)
+                .HasDatabaseName("IX_GameScores_DateAchieved");
+
+            modelBuilder.Entity<GameScore>()
+                .HasIndex(gs => new { gs.GameId, gs.DateAchieved })
+                .HasDatabaseName("IX_GameScores_GameId_DateAchieved");
+
             modelBuilder.Entity<Game>().HasData(
                 new Game
                 {

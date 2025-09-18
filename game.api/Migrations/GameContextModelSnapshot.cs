@@ -116,7 +116,11 @@ namespace game.api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("GameId");
+                    b.HasIndex("DateAchieved")
+                        .HasDatabaseName("IX_GameScores_DateAchieved");
+
+                    b.HasIndex("GameId", "DateAchieved")
+                        .HasDatabaseName("IX_GameScores_GameId_DateAchieved");
 
                     b.ToTable("GameScores");
                 });
