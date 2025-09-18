@@ -5,6 +5,7 @@ using game.api.Models;
 using game.api.Attributes;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
+using game.api.Utils;
 
 namespace game.api.Controllers
 {
@@ -164,10 +165,8 @@ namespace game.api.Controllers
             var game = await _context.Games.FindAsync(gameId);
             if (game == null) return NotFound();
 
-            // Normalize to UTC date window [start, end)
-            var baseDate = (date?.Date) ?? DateTime.UtcNow.Date;
-            var start = DateTime.SpecifyKind(baseDate, DateTimeKind.Utc);
-            var end = start.AddDays(1);
+            // Use Pacific day boundaries
+            var (start, end, _) = TimeZoneHelper.GetPacificDayRange(date);
 
             var query = _context.GameScores
                 .Where(gs => gs.GameId == gameId && gs.DateAchieved >= start && gs.DateAchieved < end);

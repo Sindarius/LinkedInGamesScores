@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using game.api.Data;
 using game.api.Models;
+using game.api.Utils;
 
 namespace game.api.Controllers
 {
@@ -111,22 +112,13 @@ namespace game.api.Controllers
             days = Math.Clamp(days, 1, 31);
             top = Math.Clamp(top, 1, 20);
 
-            var endDate = DateTime.UtcNow.Date.AddDays(1); // exclusive upper bound
-            var startDate = endDate.AddDays(-days);
-
-            var labels = Enumerable.Range(0, days)
-                .Select(i => startDate.AddDays(i).ToString("yyyy-MM-dd"))
-                .ToList();
-
-            var dateIndex = new Dictionary<DateTime, int>();
-            for (int i = 0; i < days; i++)
-            {
-                dateIndex[startDate.AddDays(i)] = i;
-            }
+            // Build Pacific-based day windows and labels
+            var (utcStart, utcEnd, pacificDays, dateIndex) = TimeZoneHelper.GetRecentPacificWindows(days);
+            var labels = pacificDays.Select(d => d.ToString("yyyy-MM-dd")).ToList();
 
             var query = _context.GameScores
                 .Include(gs => gs.Game)
-                .Where(gs => gs.DateAchieved >= startDate && gs.DateAchieved < endDate);
+                .Where(gs => gs.DateAchieved >= utcStart && gs.DateAchieved < utcEnd);
 
             if (gameId.HasValue)
             {
@@ -136,9 +128,10 @@ namespace game.api.Controllers
             var scores = await query.ToListAsync();
 
             // Determine daily winners per game, then aggregate across games per day.
+            var tz = TimeZoneHelper.GetPacificTimeZone();
             var winnersByDay = new Dictionary<DateTime, List<GameScore>>();
 
-            foreach (var group in scores.GroupBy(s => new { s.GameId, Day = s.DateAchieved.Date }))
+            foreach (var group in scores.GroupBy(s => new { s.GameId, Day = TimeZoneInfo.ConvertTimeFromUtc(s.DateAchieved, tz).Date }))
             {
                 var day = group.Key.Day;
                 var scoringType = group.First().Game?.ScoringType ?? ScoringType.Guesses;
