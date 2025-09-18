@@ -21,10 +21,8 @@ namespace game.api.Controllers
         [HttpGet("daily-champions")]
         public async Task<ActionResult<IEnumerable<DailyChampionsDto>>> GetDailyChampions([FromQuery] DateTime? date = null)
         {
-            // Normalize to UTC date window [start, end)
-            var baseDate = (date?.Date) ?? DateTime.UtcNow.Date;
-            var start = DateTime.SpecifyKind(baseDate, DateTimeKind.Utc);
-            var end = start.AddDays(1);
+            // Use Pacific day boundaries
+            var (start, end, _) = TimeZoneHelper.GetPacificDayRange(date);
 
             var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
 
