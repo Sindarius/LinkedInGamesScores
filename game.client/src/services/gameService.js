@@ -30,20 +30,13 @@ export class GameService {
 
     async getLeaderboard(gameId, date = null, top = 10) {
         if (date) {
-            // Get filtered scores for specific date
-            const scores = await this.getGameScores(gameId, date);
-            // Sort based on scoring type - time-based games should sort ascending (lower is better)
-            return scores
-                .sort((a, b) => {
-                    if (a.scoringType === 2) {
-                        // Time-based scoring
-                        return a.score - b.score; // Lower time is better
-                    } else {
-                        // Guess-based scoring
-                        return a.score - b.score; // Lower guesses is better
-                    }
-                })
-                .slice(0, top);
+            const d = new Date(date);
+            const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+            const response = await fetch(`${API_BASE_URL}/gamescores/game/${gameId}/leaderboard/day?date=${iso}&top=${top}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch daily leaderboard');
+            }
+            return await response.json();
         }
 
         const response = await fetch(`${API_BASE_URL}/gamescores/game/${gameId}/leaderboard?top=${top}`);

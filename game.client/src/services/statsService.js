@@ -10,5 +10,19 @@ export class StatsService {
         }
         return await response.json();
     }
-}
 
+    async getDailyChampions(date = null) {
+        const params = new URLSearchParams();
+        if (date) {
+            const d = new Date(date);
+            const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+            params.append('date', iso);
+        }
+        const url = params.toString() ? `/api/stats/daily-champions?${params.toString()}` : '/api/stats/daily-champions';
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to fetch daily champions');
+        }
+        return await response.json();
+    }
+}

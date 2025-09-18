@@ -16,6 +16,93 @@ namespace game.api.Controllers
             _context = context;
         }
 
+        // GET api/stats/daily-champions?date=2025-08-01
+        [HttpGet("daily-champions")]
+        public async Task<ActionResult<IEnumerable<DailyChampionsDto>>> GetDailyChampions([FromQuery] DateTime? date = null)
+        {
+            var target = (date ?? DateTime.UtcNow).Date;
+            var start = target;
+            var end = target.AddDays(1);
+
+            var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
+
+            var scores = await _context.GameScores
+                .Include(s => s.Game)
+                .Where(s => s.DateAchieved >= start && s.DateAchieved < end)
+                .ToListAsync();
+
+            var result = new List<DailyChampionsDto>();
+
+            foreach (var game in games)
+            {
+                var gScores = scores.Where(s => s.GameId == game.Id);
+                IEnumerable<GameScore> winners = Enumerable.Empty<GameScore>();
+
+                if (game.ScoringType == ScoringType.Time)
+                {
+                    var valid = gScores.Where(s => s.CompletionTime.HasValue).ToList();
+                    if (valid.Count > 0)
+                    {
+                        var best = valid.Min(s => s.CompletionTime!.Value);
+                        winners = valid.Where(s => s.CompletionTime!.Value == best);
+                    }
+                }
+                else
+                {
+                    var valid = gScores.Where(s => s.GuessCount.HasValue).ToList();
+                    if (valid.Count > 0)
+                    {
+                        var best = valid.Min(s => s.GuessCount!.Value);
+                        winners = valid.Where(s => s.GuessCount!.Value == best);
+                    }
+                }
+
+                // Distinct by identity (LinkedIn URL else name) to avoid duplicates
+                winners = winners
+                    .GroupBy(w => string.IsNullOrWhiteSpace(w.LinkedInProfileUrl)
+                        ? w.PlayerName.Trim().ToLowerInvariant()
+                        : w.LinkedInProfileUrl!.Trim().ToLowerInvariant())
+                    .Select(g => g.First());
+
+                var championList = winners
+                    .Select(w => new GameScoreDto
+                    {
+                        Id = w.Id,
+                        GameId = w.GameId,
+                        PlayerName = w.PlayerName,
+                        GuessCount = w.GuessCount,
+                        CompletionTime = w.CompletionTime,
+                        Score = game.ScoringType == ScoringType.Time
+                            ? (int)(w.CompletionTime.HasValue ? w.CompletionTime.Value.TotalSeconds : 0)
+                            : (w.GuessCount ?? 0),
+                        DateAchieved = w.DateAchieved,
+                        LinkedInProfileUrl = w.LinkedInProfileUrl,
+                        GameName = game.Name,
+                        ScoringType = game.ScoringType,
+                        HasScoreImage = w.ScoreImage != null
+                    })
+                    .ToList();
+
+                var dto = new DailyChampionsDto
+                {
+                    GameId = game.Id,
+                    GameName = game.Name,
+                    ScoringType = game.ScoringType,
+                    Champions = championList,
+                    Score = championList.FirstOrDefault()?.Score,
+                    GuessCount = championList.FirstOrDefault()?.GuessCount,
+                    CompletionTime = championList.FirstOrDefault()?.CompletionTime,
+                    DateAchieved = championList.FirstOrDefault()?.DateAchieved
+                };
+
+                result.Add(dto);
+            }
+
+            // Keep a stable order by game name
+            result = result.OrderBy(r => r.GameName).ToList();
+            return Ok(result);
+        }
+
         // GET api/stats/top-winners?days=7&top=5&gameId=optional
         [HttpGet("top-winners")]
         public async Task<ActionResult<TopWinnersTrendDto>> GetTopWinners([FromQuery] int days = 7, [FromQuery] int top = 5, [FromQuery] int? gameId = null)

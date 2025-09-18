@@ -158,6 +158,53 @@ namespace game.api.Controllers
             return gameScoreDtos;
         }
 
+        [HttpGet("game/{gameId}/leaderboard/day")]
+        public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetDailyLeaderboard(int gameId, [FromQuery] DateTime? date = null, int top = 10)
+        {
+            var game = await _context.Games.FindAsync(gameId);
+            if (game == null) return NotFound();
+
+            var target = (date ?? DateTime.UtcNow).Date;
+            var start = target;
+            var end = target.AddDays(1);
+
+            var query = _context.GameScores
+                .Where(gs => gs.GameId == gameId && gs.DateAchieved >= start && gs.DateAchieved < end);
+
+            if (game.ScoringType == ScoringType.Time)
+            {
+                query = query.Where(gs => gs.CompletionTime.HasValue)
+                             .OrderBy(gs => gs.CompletionTime);
+            }
+            else
+            {
+                query = query.Where(gs => gs.GuessCount.HasValue)
+                             .OrderBy(gs => gs.GuessCount);
+            }
+
+            var results = await query
+                .Select(gs => new GameScoreDto
+                {
+                    Id = gs.Id,
+                    GameId = gs.GameId,
+                    PlayerName = gs.PlayerName,
+                    GuessCount = gs.GuessCount,
+                    CompletionTime = gs.CompletionTime,
+                    Score = game.ScoringType == ScoringType.Time
+                        ? (int)(gs.CompletionTime.HasValue ? gs.CompletionTime.Value.TotalSeconds : 0)
+                        : (gs.GuessCount ?? 0),
+                    DateAchieved = gs.DateAchieved,
+                    LinkedInProfileUrl = gs.LinkedInProfileUrl,
+                    GameName = game.Name,
+                    ScoringType = game.ScoringType,
+                    HasScoreImage = gs.ScoreImage != null
+                })
+                .Take(top)
+                .ToListAsync();
+
+            return results;
+        }
+
         [HttpPost("with-image")]
         public async Task<ActionResult<GameScore>> PostGameScoreWithImage([FromForm] GameScoreWithImageDto dto)
         {

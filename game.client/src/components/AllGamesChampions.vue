@@ -1,7 +1,7 @@
 <script>
 import { ref, onMounted, computed, watchEffect } from 'vue';
 import { useToast } from 'primevue/usetoast';
-import { GameService } from '@/services/gameService.js';
+import { StatsService } from '@/services/statsService.js';
 import { useDateStore } from '@/stores/dateStore.js';
 
 export default {
@@ -14,7 +14,7 @@ export default {
     },
     setup(props) {
         const toast = useToast();
-        const gameService = new GameService();
+        const statsService = new StatsService();
         const champions = ref([]);
         const isLoading = ref(false);
         const { selectedDate } = useDateStore();
@@ -27,56 +27,7 @@ export default {
             isLoading.value = true;
 
             try {
-                const games = await gameService.getGames();
-                const championData = [];
-
-                for (const game of games) {
-                    const leaderboard = await gameService.getLeaderboard(game.id, selectedDate.value, 10);
-                    if (leaderboard.length > 0) {
-                        // Find all players tied for first place
-                        const firstPlaceScore = leaderboard[0].score;
-                        const firstPlaceGuesses = leaderboard[0].guessCount;
-                        const firstPlaceTime = leaderboard[0].completionTime;
-
-                        const tiedChampions = leaderboard.filter((player) => {
-                            if (game.scoringType === 1) {
-                                // Guess-based: tied if same guess count
-                                return player.guessCount === firstPlaceGuesses;
-                            } else if (game.scoringType === 2) {
-                                // Time-based: tied if same completion time
-                                return player.completionTime === firstPlaceTime;
-                            } else {
-                                // Score-based: tied if same score
-                                return player.score === firstPlaceScore;
-                            }
-                        });
-
-                        championData.push({
-                            gameId: game.id,
-                            gameName: game.name,
-                            scoringType: game.scoringType,
-                            champions: tiedChampions,
-                            score: firstPlaceScore,
-                            guessCount: firstPlaceGuesses,
-                            completionTime: firstPlaceTime,
-                            dateAchieved: tiedChampions[0].dateAchieved
-                        });
-                    } else {
-                        // No champion for this date
-                        championData.push({
-                            gameId: game.id,
-                            gameName: game.name,
-                            scoringType: game.scoringType,
-                            champions: [],
-                            score: null,
-                            guessCount: null,
-                            completionTime: null,
-                            dateAchieved: null
-                        });
-                    }
-                }
-
-                champions.value = championData;
+                champions.value = await statsService.getDailyChampions(selectedDate.value);
             } catch (error) {
                 console.error('Error loading champions:', error);
                 toast.add({
