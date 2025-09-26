@@ -131,4 +131,60 @@ export class GameService {
         const dates = [...new Set(scores.map((score) => new Date(score.dateAchieved).toDateString()))];
         return dates.sort((a, b) => new Date(b) - new Date(a));
     }
+
+    // Analytics endpoints
+    async getCloseCalls(days = 7) {
+        const response = await fetch(`${API_BASE_URL}/analytics/close-calls?days=${days}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch close calls data');
+        }
+        return await response.json();
+    }
+
+    async getComebackKings(days = 14) {
+        const response = await fetch(`${API_BASE_URL}/analytics/comeback-kings?days=${days}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch comeback kings data');
+        }
+        return await response.json();
+    }
+
+    async getConsistencyChampions(days = 30, minScores = 5) {
+        const response = await fetch(`${API_BASE_URL}/analytics/consistency-champions?days=${days}&minScores=${minScores}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch consistency champions data');
+        }
+        return await response.json();
+    }
+
+    async getScoreDistribution(scoringType, days = 30) {
+        const response = await fetch(`${API_BASE_URL}/analytics/distribution/${scoringType}?days=${days}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch score distribution data');
+        }
+        return await response.json();
+    }
+
+    async getPhotoFinishes(date = null) {
+        let url = `${API_BASE_URL}/analytics/photo-finish`;
+        if (date) {
+            const d = new Date(date);
+            const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+            url += `?date=${iso}`;
+        }
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to fetch photo finish data');
+        }
+        return await response.json();
+    }
+
+    async getPlayerTemperature(playerName, days = 7) {
+        const encodedPlayerName = encodeURIComponent(playerName);
+        const response = await fetch(`${API_BASE_URL}/analytics/player-temperature/${encodedPlayerName}?days=${days}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch player temperature data');
+        }
+        return await response.json();
+    }
 }

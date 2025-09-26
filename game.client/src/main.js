@@ -7,13 +7,7 @@ import PrimeVue from 'primevue/config';
 import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
 
-import { 
-    loadThemeFromStorage, 
-    presets, 
-    getPresetExt, 
-    applyDarkModeClass,
-    surfaces
-} from '@/stores/themeStore.js';
+import { loadThemeFromStorage, presets, getPresetExt, applyDarkModeClass, surfaces } from '@/stores/themeStore.js';
 
 import '@/assets/styles.scss';
 

@@ -207,9 +207,7 @@ function applyThemeSettings(theme) {
 
     if (presetValue) {
         // Update theme configuration for dynamic changes
-        const primeuiTheme = $t()
-            .preset(presetValue)
-            .preset(getPresetExt(theme.primary));
+        const primeuiTheme = $t().preset(presetValue).preset(getPresetExt(theme.primary));
 
         if (surfacePalette) {
             primeuiTheme.surfacePalette(surfacePalette);

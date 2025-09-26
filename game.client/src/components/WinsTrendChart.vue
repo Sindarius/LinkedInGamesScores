@@ -19,9 +19,7 @@ const chartOptions = ref({
     scales: { y: { beginAtZero: true, precision: 0, ticks: { stepSize: 1 } } }
 });
 
-const colorPalette = [
-    '#3b82f6', '#22c55e', '#ef4444', '#a855f7', '#f59e0b', '#06b6d4', '#10b981', '#e11d48'
-];
+const colorPalette = ['#3b82f6', '#22c55e', '#ef4444', '#a855f7', '#f59e0b', '#06b6d4', '#10b981', '#e11d48'];
 
 async function load() {
     loading.value = true;
@@ -59,4 +57,3 @@ watch(() => [props.days, props.top, props.gameId, props.refreshKey], load);
         </template>
     </Card>
 </template>
-

@@ -1,9 +1,13 @@
 <script>
 import { GameService } from '@/services/gameService.js';
 import { useDateStore } from '@/stores/dateStore.js';
+import TemperatureIndicator from '@/components/analytics/TemperatureIndicator.vue';
 
 export default {
     name: 'DailyLeaderboard',
+    components: {
+        TemperatureIndicator
+    },
     props: {
         gameId: {
             type: Number,
@@ -34,7 +38,10 @@ export default {
                 y: 0,
                 scoreId: null
             },
-            isMobile: false
+            isMobile: false,
+            scoreInsights: {},
+            cachedScoresByDate: {},
+            cachedAllScores: {}
         };
     },
     mounted() {
@@ -79,11 +86,17 @@ export default {
                 try {
                     const games = await this.gameService.getGames();
                     this.selectedGame = games.find((g) => g.id === this.gameId);
+                    if (this.scores.length) {
+                        await this.buildScoreInsights(this.scores);
+                    }
                 } catch (error) {
                     console.error('Error loading game info:', error);
                 }
             } else {
                 this.selectedGame = null;
+                if (this.scores.length) {
+                    await this.buildScoreInsights(this.scores);
+                }
             }
         },
         async loadLeaderboard() {
@@ -104,8 +117,11 @@ export default {
 
                     this.scores = allScores.sort((a, b) => b.score - a.score).slice(0, 10);
                 }
+
+                await this.buildScoreInsights(this.scores);
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
+                this.scoreInsights = {};
                 this.$toast.add({
                     severity: 'error',
                     summary: 'Error',
@@ -237,6 +253,337 @@ export default {
             // On desktop, hover handles the preview, click also opens dialog
             else {
                 this.viewScoreImage(scoreId);
+            }
+        },
+
+        async buildScoreInsights(scores) {
+            if (!Array.isArray(scores) || scores.length === 0) {
+                this.scoreInsights = {};
+                return;
+            }
+
+            const selectedDateObj = this.selectedDate ? new Date(this.selectedDate) : new Date();
+            const scoringType = this.selectedGame?.scoringType ?? scores[0]?.scoringType ?? 1;
+
+            let previousDayRanks = new Map();
+            let personalRecordMap = new Map();
+
+            if (this.gameId && this.selectedGame) {
+                try {
+                    const previousDate = this.getPreviousDate(selectedDateObj);
+                    const [yesterdayScores, allScores] = await Promise.all([this.getScoresForDate(this.gameId, previousDate), this.getAllScoresForGame(this.gameId)]);
+
+                    previousDayRanks = this.calculateRankings(yesterdayScores, scoringType);
+                    personalRecordMap = this.calculatePersonalRecordMap(allScores, scoringType, selectedDateObj);
+                } catch (error) {
+                    console.error('Error building score insights:', error);
+                }
+            }
+
+            const insights = {};
+
+            scores.forEach((score, index) => {
+                const { actualRank } = this.getRankInfo(index, score, scores);
+                const chips = [];
+                const previousRank = previousDayRanks.get(score.playerName);
+
+                if (typeof previousRank === 'number' && Number.isFinite(previousRank)) {
+                    const delta = previousRank - actualRank;
+                    if (delta > 0) {
+                        chips.push({ label: `+${delta} vs yesterday`, severity: 'success', key: `delta-${score.id}` });
+                    } else if (delta < 0) {
+                        chips.push({ label: `${delta} vs yesterday`, severity: 'danger', key: `delta-${score.id}` });
+                    } else {
+                        chips.push({ label: 'Even with yesterday', severity: 'info', key: `delta-${score.id}` });
+                    }
+                }
+
+                const personalRecord = personalRecordMap.get(score.playerName);
+                if (personalRecord?.isNewRecord && personalRecord.todayBestIds.includes(score.id)) {
+                    chips.push({ label: 'New personal record', severity: 'success', key: `record-${score.id}` });
+                }
+
+                insights[score.id] = {
+                    chips,
+                    actualRank,
+                    canShare: actualRank <= 3,
+                    shareSummary: this.buildShareSummary(score, selectedDateObj)
+                };
+            });
+
+            this.scoreInsights = insights;
+        },
+        async getScoresForDate(gameId, date) {
+            if (!gameId || !date) {
+                return [];
+            }
+
+            const dateKey = `${gameId}|${this.getDateKey(date)}`;
+            if (this.cachedScoresByDate[dateKey]) {
+                return this.cachedScoresByDate[dateKey];
+            }
+
+            try {
+                const scores = await this.gameService.getGameScores(gameId, date);
+                this.cachedScoresByDate[dateKey] = Array.isArray(scores) ? scores : [];
+            } catch (error) {
+                console.error('Error fetching scores for date:', error);
+                this.cachedScoresByDate[dateKey] = [];
+            }
+
+            return this.cachedScoresByDate[dateKey];
+        },
+        async getAllScoresForGame(gameId) {
+            if (!gameId) {
+                return [];
+            }
+
+            if (this.cachedAllScores[gameId]) {
+                return this.cachedAllScores[gameId];
+            }
+
+            try {
+                const scores = await this.gameService.getGameScores(gameId);
+                this.cachedAllScores[gameId] = Array.isArray(scores) ? scores : [];
+            } catch (error) {
+                console.error('Error fetching all scores for game:', error);
+                this.cachedAllScores[gameId] = [];
+            }
+
+            return this.cachedAllScores[gameId];
+        },
+        getDateKey(date) {
+            const d = new Date(date);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        },
+        getPreviousDate(date) {
+            const prev = new Date(date);
+            prev.setDate(prev.getDate() - 1);
+            return prev;
+        },
+        getLocalDayBounds(date) {
+            const start = new Date(date);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(start);
+            end.setDate(end.getDate() + 1);
+            return { start, end };
+        },
+        calculateRankings(scores, scoringType) {
+            const ranks = new Map();
+            if (!Array.isArray(scores) || scores.length === 0) {
+                return ranks;
+            }
+
+            const sorted = [...scores].sort((a, b) => {
+                const aValue = this.normalizeScoreValue(a, scoringType);
+                const bValue = this.normalizeScoreValue(b, scoringType);
+                if (scoringType === 1 || scoringType === 2) {
+                    return aValue - bValue;
+                }
+                return bValue - aValue;
+            });
+
+            sorted.forEach((score, index) => {
+                const rank = this.getActualRankForScores(sorted, index, scoringType);
+                if (!ranks.has(score.playerName)) {
+                    ranks.set(score.playerName, rank);
+                }
+            });
+
+            return ranks;
+        },
+        getActualRankForScores(sortedScores, index, scoringType) {
+            if (index === 0) {
+                return 1;
+            }
+
+            let actualRank = 1;
+            const currentValue = this.normalizeScoreValue(sortedScores[index], scoringType);
+
+            for (let i = 0; i < index; i++) {
+                const compareValue = this.normalizeScoreValue(sortedScores[i], scoringType);
+                if (this.isStrictlyBetter(compareValue, currentValue, scoringType)) {
+                    actualRank++;
+                }
+            }
+
+            return actualRank;
+        },
+        normalizeScoreValue(score, scoringType) {
+            if (scoringType === 1) {
+                if (!Number.isFinite(score?.guessCount) || score.guessCount === 99) {
+                    return Number.POSITIVE_INFINITY;
+                }
+                return score.guessCount;
+            }
+
+            if (scoringType === 2) {
+                if (Number.isFinite(score?.score)) {
+                    return score.score;
+                }
+                return this.timeStringToSeconds(score?.completionTime);
+            }
+
+            return Number.isFinite(score?.score) ? score.score : 0;
+        },
+        isStrictlyBetter(candidate, existing, scoringType) {
+            if (!Number.isFinite(existing)) {
+                return true;
+            }
+
+            if (scoringType === 1 || scoringType === 2) {
+                return candidate < existing;
+            }
+
+            return candidate > existing;
+        },
+        timeStringToSeconds(timeSpan) {
+            if (!timeSpan || typeof timeSpan !== 'string') {
+                return Number.POSITIVE_INFINITY;
+            }
+
+            const parts = timeSpan.split(':').map((value) => Number.parseInt(value, 10));
+            if (parts.some((part) => Number.isNaN(part))) {
+                return Number.POSITIVE_INFINITY;
+            }
+
+            while (parts.length < 3) {
+                parts.unshift(0);
+            }
+
+            const [hours, minutes, seconds] = parts;
+            return hours * 3600 + minutes * 60 + seconds;
+        },
+        calculatePersonalRecordMap(allScores, scoringType, selectedDate) {
+            const records = new Map();
+            if (!Array.isArray(allScores) || allScores.length === 0) {
+                return records;
+            }
+
+            const { start, end } = this.getLocalDayBounds(selectedDate);
+            const grouped = allScores.reduce((acc, score) => {
+                const key = score.playerName || 'Unknown';
+                acc[key] = acc[key] || [];
+                acc[key].push(score);
+                return acc;
+            }, {});
+
+            Object.entries(grouped).forEach(([playerName, scores]) => {
+                let bestBeforeValue = Number.POSITIVE_INFINITY;
+                let hasHistoricalBest = false;
+                let bestTodayValue = Number.POSITIVE_INFINITY;
+                const todayBestIds = [];
+
+                scores.forEach((score) => {
+                    const value = this.normalizeScoreValue(score, scoringType);
+                    if (!Number.isFinite(value)) {
+                        return;
+                    }
+
+                    const achieved = new Date(score.dateAchieved);
+                    if (achieved < start) {
+                        if (!hasHistoricalBest || this.isStrictlyBetter(value, bestBeforeValue, scoringType)) {
+                            bestBeforeValue = value;
+                            hasHistoricalBest = true;
+                        }
+                    } else if (achieved >= start && achieved < end) {
+                        if (todayBestIds.length === 0 || this.isStrictlyBetter(value, bestTodayValue, scoringType)) {
+                            bestTodayValue = value;
+                            todayBestIds.length = 0;
+                            todayBestIds.push(score.id);
+                        } else if (!this.isStrictlyBetter(value, bestTodayValue, scoringType) && !this.isStrictlyBetter(bestTodayValue, value, scoringType)) {
+                            todayBestIds.push(score.id);
+                        }
+                    }
+                });
+
+                const hasToday = todayBestIds.length > 0;
+                const isNewRecord = hasToday && (!hasHistoricalBest || this.isStrictlyBetter(bestTodayValue, bestBeforeValue, scoringType));
+
+                records.set(playerName, {
+                    isNewRecord,
+                    todayBestIds,
+                    bestTodayValue: hasToday ? bestTodayValue : null
+                });
+            });
+
+            return records;
+        },
+        formatScoreSummary(score, overrideType = null) {
+            const scoringType = overrideType ?? score.scoringType ?? this.selectedGame?.scoringType ?? 1;
+
+            if (scoringType === 1) {
+                if (score.guessCount === 99) {
+                    return 'DNF';
+                }
+                if (!Number.isFinite(score.guessCount)) {
+                    return 'N/A';
+                }
+                return `${score.guessCount} guess${score.guessCount === 1 ? '' : 'es'}`;
+            }
+
+            if (scoringType === 2) {
+                return this.formatCompletionTime(score.completionTime);
+            }
+
+            return Number.isFinite(score.score) ? score.score.toLocaleString() : 'N/A';
+        },
+        buildShareSummary(score, selectedDateObj = new Date()) {
+            const scoringType = score.scoringType ?? this.selectedGame?.scoringType ?? 1;
+            const gameName = this.selectedGame?.name || score.gameName || 'LinkedIn Game Scores';
+            const formattedScore = this.formatScoreSummary(score, scoringType);
+            const dateKey = this.getDateKey(selectedDateObj);
+            const origin = typeof window !== 'undefined' && window.location ? window.location.origin : 'https://www.linkedin.com';
+            const url = `${origin}/?game=${score.gameId}&date=${dateKey}`;
+            const text = `I just logged ${formattedScore} in ${gameName} on LinkedIn Game Scores!`;
+
+            return { text, url, gameName, formattedScore };
+        },
+        async shareScore(score) {
+            const insight = this.scoreInsights?.[score.id];
+            if (!insight || !insight.canShare) {
+                this.$toast.add({
+                    severity: 'info',
+                    summary: 'Share',
+                    detail: 'Only the top three players can share directly from the leaderboard.',
+                    life: 2500
+                });
+                return;
+            }
+
+            const payload = insight.shareSummary;
+            const shareData = {
+                title: 'LinkedIn Game Scores',
+                text: payload.text,
+                url: payload.url
+            };
+
+            try {
+                if (typeof navigator !== 'undefined' && navigator.share) {
+                    await navigator.share(shareData);
+                    this.$toast.add({
+                        severity: 'success',
+                        summary: 'Ready to share',
+                        detail: 'Your score is in the share sheet.',
+                        life: 2200
+                    });
+                } else if (typeof window !== 'undefined') {
+                    const linkedInUrl = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(payload.url)}&title=${encodeURIComponent('LinkedIn Game Scores')}&summary=${encodeURIComponent(payload.text)}`;
+                    window.open(linkedInUrl, '_blank', 'noopener');
+                }
+            } catch (error) {
+                if (error?.name !== 'AbortError') {
+                    console.error('Error sharing score:', error);
+                    this.$toast.add({
+                        severity: 'warn',
+                        summary: 'Share canceled',
+                        detail: 'We could not complete the share.',
+                        life: 2500
+                    });
+                }
             }
         },
         getRankDisplay(index, currentScore, scores) {
@@ -403,13 +750,26 @@ export default {
 
                     <Column field="playerName" header="Player">
                         <template #body="{ data }">
-                            <div class="flex items-center">
-                                <Avatar :label="data.playerName.charAt(0).toUpperCase()" class="mr-2" size="small" />
-                                <div>
-                                    <div class="font-medium">{{ data.playerName }}</div>
-                                    <div v-if="data.linkedInProfileUrl" class="text-xs text-blue-600">
-                                        <a :href="data.linkedInProfileUrl" target="_blank" class="hover:underline"> LinkedIn Profile </a>
+                            <div class="flex flex-col gap-2">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="flex items-center">
+                                        <Avatar :label="data.playerName.charAt(0).toUpperCase()" class="mr-2" size="small" />
+                                        <div>
+                                            <div class="font-medium">{{ data.playerName }}</div>
+                                            <div v-if="data.linkedInProfileUrl" class="text-xs text-blue-600">
+                                                <a :href="data.linkedInProfileUrl" target="_blank" class="hover:underline"> LinkedIn Profile </a>
+                                            </div>
+                                            <div class="mt-1">
+                                                <TemperatureIndicator :playerName="data.playerName" :days="7" :refreshTrigger="refreshTrigger" />
+                                            </div>
+                                        </div>
                                     </div>
+                                    <Button v-if="scoreInsights[data.id]?.canShare" icon="pi pi-share-alt" label="Share" size="small" text class="share-button" @click="shareScore(data)" :aria-label="`Share ${data.playerName}'s score to LinkedIn`" />
+                                </div>
+                                <div v-if="scoreInsights[data.id]?.chips?.length" class="flex flex-wrap gap-2 pl-10 md:pl-12">
+                                    <span v-for="chip in scoreInsights[data.id].chips" :key="chip.key" class="info-chip" :class="`info-chip--${chip.severity || 'info'}`">
+                                        {{ chip.label }}
+                                    </span>
                                 </div>
                             </div>
                         </template>
@@ -484,5 +844,25 @@ export default {
 <style scoped>
 .pi-trophy {
     color: #fbbf24;
+}
+
+.info-chip {
+    @apply text-xs font-semibold px-3 py-1 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap;
+}
+
+.info-chip--success {
+    @apply bg-green-50 text-green-700;
+}
+
+.info-chip--danger {
+    @apply bg-red-50 text-red-700;
+}
+
+.info-chip--info {
+    @apply bg-blue-50 text-blue-700;
+}
+
+.share-button :deep(.p-button) {
+    @apply px-3 py-1;
 }
 </style>
