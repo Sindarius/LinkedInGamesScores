@@ -24,7 +24,8 @@
       "Bash(mkdir:*)",
       "Bash(npx playwright:*)",
       "Bash(npm test)",
-      "Bash(timeout 5 npm run dev)"
+      "Bash(timeout 5 npm run dev)",
+      "Bash(dotnet build:*)"
     ],
     "deny": []
   }

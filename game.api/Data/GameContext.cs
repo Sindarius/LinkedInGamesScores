@@ -11,13 +11,22 @@ namespace game.api.Data
 
         public DbSet<Game> Games { get; set; }
         public DbSet<GameScore> GameScores { get; set; }
+        public DbSet<GameScoreImage> GameScoreImages { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // Configure GameScore to Game relationship
             modelBuilder.Entity<GameScore>()
                 .HasOne(gs => gs.Game)
                 .WithMany(g => g.Scores)
                 .HasForeignKey(gs => gs.GameId);
+
+            // Configure GameScoreImage to GameScore relationship (1-to-1)
+            modelBuilder.Entity<GameScoreImage>()
+                .HasOne(gsi => gsi.GameScore)
+                .WithOne(gs => gs.Image)
+                .HasForeignKey<GameScoreImage>(gsi => gsi.GameScoreId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Performance indexes for common query patterns
             // Frequently filter/sort by date and game
@@ -28,6 +37,12 @@ namespace game.api.Data
             modelBuilder.Entity<GameScore>()
                 .HasIndex(gs => new { gs.GameId, gs.DateAchieved })
                 .HasDatabaseName("IX_GameScores_GameId_DateAchieved");
+
+            // Index on GameScoreImage for quick lookups
+            modelBuilder.Entity<GameScoreImage>()
+                .HasIndex(gsi => gsi.GameScoreId)
+                .IsUnique()
+                .HasDatabaseName("IX_GameScoreImages_GameScoreId");
 
             modelBuilder.Entity<Game>().HasData(
                 new Game

@@ -24,9 +24,10 @@ namespace game.api.Controllers
             // Use Pacific day boundaries
             var (start, end, _) = TimeZoneHelper.GetPacificDayRange(date);
 
-            var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
+            var games = await _context.Games.AsNoTracking().Where(g => g.IsActive).ToListAsync();
 
             var scores = await _context.GameScores
+                .AsNoTracking()
                 .Include(s => s.Game)
                 .Where(s => s.DateAchieved >= start && s.DateAchieved < end)
                 .ToListAsync();
@@ -79,7 +80,7 @@ namespace game.api.Controllers
                         LinkedInProfileUrl = w.LinkedInProfileUrl,
                         GameName = game.Name,
                         ScoringType = game.ScoringType,
-                        HasScoreImage = w.ScoreImage != null
+                        HasScoreImage = w.Image != null || w.ScoreImage != null
                     })
                     .ToList();
 
@@ -115,6 +116,7 @@ namespace game.api.Controllers
             var labels = pacificDays.Select(d => d.ToString("yyyy-MM-dd")).ToList();
 
             var query = _context.GameScores
+                .AsNoTracking()
                 .Include(gs => gs.Game)
                 .Where(gs => gs.DateAchieved >= utcStart && gs.DateAchieved < utcEnd);
 

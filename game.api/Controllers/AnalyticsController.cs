@@ -23,12 +23,13 @@ namespace game.api.Controllers
             try
             {
                 var cutoffDate = DateTime.UtcNow.AddDays(-days);
-                var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
+                var games = await _context.Games.AsNoTracking().Where(g => g.IsActive).ToListAsync();
                 var closeCallsData = new List<object>();
 
                 foreach (var game in games)
                 {
                     var scores = await _context.GameScores
+                        .AsNoTracking()
                         .Where(gs => gs.GameId == game.Id && gs.DateAchieved >= cutoffDate)
                         .Where(gs => 
                             (game.ScoringType == ScoringType.Time && gs.CompletionTime.HasValue) ||
@@ -132,12 +133,13 @@ namespace game.api.Controllers
             try
             {
                 var cutoffDate = DateTime.UtcNow.AddDays(-days);
-                var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
+                var games = await _context.Games.AsNoTracking().Where(g => g.IsActive).ToListAsync();
                 var comebackData = new List<object>();
 
                 foreach (var game in games)
                 {
                     var scores = await _context.GameScores
+                        .AsNoTracking()
                         .Where(gs => gs.GameId == game.Id && gs.DateAchieved >= cutoffDate)
                         .Where(gs => 
                             (game.ScoringType == ScoringType.Time && gs.CompletionTime.HasValue) ||
@@ -207,12 +209,13 @@ namespace game.api.Controllers
             try
             {
                 var cutoffDate = DateTime.UtcNow.AddDays(-days);
-                var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
+                var games = await _context.Games.AsNoTracking().Where(g => g.IsActive).ToListAsync();
                 var consistencyData = new List<object>();
 
                 foreach (var game in games)
                 {
                     var scores = await _context.GameScores
+                        .AsNoTracking()
                         .Where(gs => gs.GameId == game.Id && gs.DateAchieved >= cutoffDate)
                         .Where(gs => 
                             (game.ScoringType == ScoringType.Time && gs.CompletionTime.HasValue) ||
@@ -295,6 +298,7 @@ namespace game.api.Controllers
             {
                 var cutoffDate = DateTime.UtcNow.AddDays(-days);
                 var games = await _context.Games
+                    .AsNoTracking()
                     .Where(g => g.IsActive && g.ScoringType == scoringType)
                     .ToListAsync();
 
@@ -303,6 +307,7 @@ namespace game.api.Controllers
                 foreach (var game in games)
                 {
                     var scores = await _context.GameScores
+                        .AsNoTracking()
                         .Where(gs => gs.GameId == game.Id && gs.DateAchieved >= cutoffDate)
                         .Where(gs => 
                             (scoringType == ScoringType.Time && gs.CompletionTime.HasValue) ||
@@ -387,12 +392,13 @@ namespace game.api.Controllers
             try
             {
                 var (start, end, _) = TimeZoneHelper.GetPacificDayRange(date);
-                var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
+                var games = await _context.Games.AsNoTracking().Where(g => g.IsActive).ToListAsync();
                 var photoFinishes = new List<object>();
 
                 foreach (var game in games)
                 {
                     var dailyScores = await _context.GameScores
+                        .AsNoTracking()
                         .Where(gs => gs.GameId == game.Id && gs.DateAchieved >= start && gs.DateAchieved < end)
                         .Where(gs => 
                             (game.ScoringType == ScoringType.Time && gs.CompletionTime.HasValue) ||
@@ -476,12 +482,13 @@ namespace game.api.Controllers
             {
                 var cutoffDate = DateTime.UtcNow.AddDays(-days);
                 var normalizedPlayerName = playerName.Trim().ToLower();
-                var games = await _context.Games.Where(g => g.IsActive).ToListAsync();
+                var games = await _context.Games.AsNoTracking().Where(g => g.IsActive).ToListAsync();
                 var temperatureData = new List<object>();
 
                 foreach (var game in games)
                 {
                     var playerScores = await _context.GameScores
+                        .AsNoTracking()
                         .Where(gs => gs.GameId == game.Id && gs.DateAchieved >= cutoffDate)
                         .Where(gs => gs.PlayerName.Trim().ToLower() == normalizedPlayerName)
                         .Where(gs => 

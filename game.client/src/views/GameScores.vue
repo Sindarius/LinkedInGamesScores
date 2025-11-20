@@ -689,8 +689,8 @@ export default {
         <!-- Analytics Dashboard -->
         <div class="mt-8">
             <div class="mb-6 text-center">
-                <h2 class="text-2xl font-bold text-gray-900 mb-2">Game Analytics Dashboard</h2>
-                <p class="text-gray-600">Deep dive into game statistics and player performance</p>
+                <h2 class="text-2xl font-bold text-surface-900 dark:text-surface-0 mb-2">Game Analytics Dashboard</h2>
+                <p class="text-muted-color">Deep dive into game statistics and player performance</p>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -712,22 +712,22 @@ export default {
 }
 
 .highlights-card {
-    @apply border border-blue-100 bg-blue-50/40;
+    @apply border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-800;
 }
 
 .highlight-tile {
-    @apply rounded-xl bg-white shadow-sm p-4 border border-blue-100 flex flex-col gap-2 min-h-[96px];
+    @apply rounded-xl bg-surface-50 dark:bg-surface-900 shadow-sm p-4 border border-surface-200 dark:border-surface-700 flex flex-col gap-2 min-h-[96px];
 }
 
 .highlight-label {
-    @apply text-xs font-semibold uppercase tracking-wide text-blue-600;
+    @apply text-xs font-semibold uppercase tracking-wide text-primary;
 }
 
 .highlight-value {
-    @apply text-base font-semibold text-gray-900;
+    @apply text-base font-semibold text-surface-900 dark:text-surface-0;
 }
 
 .highlight-loading {
-    @apply text-sm text-gray-500;
+    @apply text-sm text-muted-color;
 }
 </style>

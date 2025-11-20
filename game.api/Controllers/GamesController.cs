@@ -21,6 +21,7 @@ namespace game.api.Controllers
         public async Task<ActionResult<IEnumerable<GameDto>>> GetGames()
         {
             var games = await _context.Games
+                .AsNoTracking()
                 .Where(g => g.IsActive)
                 .ToListAsync();
 
@@ -41,7 +42,7 @@ namespace game.api.Controllers
         [AdminAuthorize]
         public async Task<ActionResult<IEnumerable<GameDto>>> GetAllGamesForAdmin()
         {
-            var games = await _context.Games.ToListAsync();
+            var games = await _context.Games.AsNoTracking().ToListAsync();
 
             var gameDtos = games.Select(g => new GameDto
             {
@@ -60,6 +61,7 @@ namespace game.api.Controllers
         public async Task<ActionResult<GameDto>> GetGame(int id)
         {
             var game = await _context.Games
+                .AsNoTracking()
                 .FirstOrDefaultAsync(g => g.Id == id && g.IsActive);
 
             if (game == null)

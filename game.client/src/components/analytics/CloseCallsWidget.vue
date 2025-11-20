@@ -68,7 +68,7 @@ export default {
         <template #content>
             <div v-if="loading" class="text-center py-4">
                 <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4" />
-                <p class="text-gray-500 mt-2">Analyzing nail-biting finishes...</p>
+                <p class="text-muted-color mt-2">Analyzing nail-biting finishes...</p>
             </div>
             <div v-else-if="error" class="text-red-600 text-center py-4">
                 {{ error }}
@@ -76,35 +76,35 @@ export default {
             <div v-else-if="data">
                 <div class="text-center mb-4">
                     <div class="text-3xl font-bold text-orange-600">{{ data.totalCloseCalls }}</div>
-                    <div class="text-sm text-gray-600">Close calls in the last {{ data.daysAnalyzed }} days</div>
+                    <div class="text-sm text-muted-color">Close calls in the last {{ data.daysAnalyzed }} days</div>
                 </div>
 
                 <div v-if="data.games && data.games.length > 0" class="space-y-4">
-                    <div v-for="game in data.games" :key="game.gameId" class="border rounded-lg p-3">
+                    <div v-for="game in data.games" :key="game.gameId" class="border border-surface-200 dark:border-surface-700 rounded-lg p-3">
                         <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-semibold text-gray-800">{{ game.gameName }}</h4>
+                            <h4 class="font-semibold text-surface-900 dark:text-surface-0">{{ game.gameName }}</h4>
                             <Badge :value="game.closeCallCount" severity="warning" />
                         </div>
 
                         <div v-if="game.examples && game.examples.length > 0" class="space-y-2">
-                            <div v-for="example in game.examples" :key="`${example.date}-${example.winner}`" class="bg-orange-50 rounded p-2 text-sm">
+                            <div v-for="example in game.examples" :key="`${example.date}-${example.winner}`" class="bg-surface-50 dark:bg-surface-900 rounded p-2 text-sm">
                                 <div class="flex justify-between items-center">
                                     <div>
-                                        <span class="font-medium">{{ example.winner }}</span>
-                                        <span class="text-gray-600"> beat </span>
-                                        <span class="font-medium">{{ example.runnerUp }}</span>
+                                        <span class="font-medium text-surface-900 dark:text-surface-0">{{ example.winner }}</span>
+                                        <span class="text-muted-color"> beat </span>
+                                        <span class="font-medium text-surface-900 dark:text-surface-0">{{ example.runnerUp }}</span>
                                     </div>
                                     <div class="text-orange-600 font-bold">{{ example.margin }}</div>
                                 </div>
-                                <div class="text-xs text-gray-500 mt-1">{{ example.winnerScore }} vs {{ example.runnerUpScore }} on {{ formatDate(example.date) }}</div>
+                                <div class="text-xs text-muted-color mt-1">{{ example.winnerScore }} vs {{ example.runnerUpScore }} on {{ formatDate(example.date) }}</div>
                             </div>
                         </div>
 
-                        <div v-else-if="game.closeCallCount === 0" class="text-gray-500 text-sm">No close calls yet</div>
+                        <div v-else-if="game.closeCallCount === 0" class="text-muted-color text-sm">No close calls yet</div>
                     </div>
                 </div>
 
-                <div v-else class="text-gray-500 text-center py-4">No close calls found</div>
+                <div v-else class="text-muted-color text-center py-4">No close calls found</div>
             </div>
         </template>
     </Card>
@@ -112,6 +112,6 @@ export default {
 
 <style scoped>
 .analytics-card {
-    @apply bg-gradient-to-br from-orange-50 to-yellow-50 border-orange-200;
+    @apply bg-surface-0 dark:bg-surface-800 border border-surface-200 dark:border-surface-700;
 }
 </style>

@@ -125,6 +125,37 @@ namespace game.api.Migrations
                     b.ToTable("GameScores");
                 });
 
+            modelBuilder.Entity("game.api.Models.GameScoreImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("GameScoreId")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("ImageData")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("UploadedDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GameScoreId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_GameScoreImages_GameScoreId");
+
+                    b.ToTable("GameScoreImages");
+                });
+
             modelBuilder.Entity("game.api.Models.GameScore", b =>
                 {
                     b.HasOne("game.api.Models.Game", "Game")
@@ -136,9 +167,25 @@ namespace game.api.Migrations
                     b.Navigation("Game");
                 });
 
+            modelBuilder.Entity("game.api.Models.GameScoreImage", b =>
+                {
+                    b.HasOne("game.api.Models.GameScore", "GameScore")
+                        .WithOne("Image")
+                        .HasForeignKey("game.api.Models.GameScoreImage", "GameScoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GameScore");
+                });
+
             modelBuilder.Entity("game.api.Models.Game", b =>
                 {
                     b.Navigation("Scores");
+                });
+
+            modelBuilder.Entity("game.api.Models.GameScore", b =>
+                {
+                    b.Navigation("Image");
                 });
 #pragma warning restore 612, 618
         }

@@ -70,41 +70,41 @@ export default {
         <template #content>
             <div v-if="loading" class="text-center py-4">
                 <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4" />
-                <p class="text-gray-500 mt-2">Finding improvement streaks...</p>
+                <p class="text-muted-color mt-2">Finding improvement streaks...</p>
             </div>
             <div v-else-if="error" class="text-red-600 text-center py-4">
                 {{ error }}
             </div>
             <div v-else-if="data">
                 <div class="text-center mb-4">
-                    <div class="text-sm text-gray-600">Most improved players ({{ data.daysAnalyzed }} days)</div>
+                    <div class="text-sm text-muted-color">Most improved players ({{ data.daysAnalyzed }} days)</div>
                 </div>
 
                 <div v-if="data.games && data.games.length > 0" class="space-y-4">
-                    <div v-for="game in data.games" :key="game.gameId" class="border rounded-lg p-3">
-                        <h4 class="font-semibold text-gray-800 mb-3">{{ game.gameName }}</h4>
+                    <div v-for="game in data.games" :key="game.gameId" class="border border-surface-200 dark:border-surface-700 rounded-lg p-3">
+                        <h4 class="font-semibold text-surface-900 dark:text-surface-0 mb-3">{{ game.gameName }}</h4>
 
                         <div v-if="game.topPlayers && game.topPlayers.length > 0" class="space-y-2">
-                            <div v-for="(player, index) in game.topPlayers" :key="player.playerName" class="flex items-center justify-between bg-green-50 rounded p-2">
+                            <div v-for="(player, index) in game.topPlayers" :key="player.playerName" class="flex items-center justify-between bg-surface-50 dark:bg-surface-900 rounded p-2">
                                 <div class="flex items-center gap-3">
                                     <div class="flex-shrink-0">
                                         <Badge :value="index + 1" :severity="index === 0 ? 'success' : 'info'" />
                                     </div>
                                     <div>
-                                        <div class="font-medium">{{ player.playerName }}</div>
-                                        <div class="text-xs text-gray-600">{{ player.totalImprovements }} improvement{{ player.totalImprovements !== 1 ? 's' : '' }} ({{ player.recentScoresCount }} scores)</div>
+                                        <div class="font-medium text-surface-900 dark:text-surface-0">{{ player.playerName }}</div>
+                                        <div class="text-xs text-muted-color">{{ player.totalImprovements }} improvement{{ player.totalImprovements !== 1 ? 's' : '' }} ({{ player.recentScoresCount }} scores)</div>
                                     </div>
                                 </div>
                                 <div class="text-right">
                                     <div class="text-green-600 font-bold">
                                         {{ formatImprovement(player.averageImprovement, game.scoringType) }}
                                     </div>
-                                    <div class="text-xs text-gray-500">avg improvement</div>
+                                    <div class="text-xs text-muted-color">avg improvement</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div v-else class="text-gray-500 text-center py-4">
+                        <div v-else class="text-muted-color text-center py-4">
                             <i class="pi pi-info-circle mb-2"></i>
                             <div>No improvement patterns found</div>
                             <div class="text-xs">Players need at least 3 scores to qualify</div>
@@ -112,7 +112,7 @@ export default {
                     </div>
                 </div>
 
-                <div v-else class="text-gray-500 text-center py-4">No comeback data available</div>
+                <div v-else class="text-muted-color text-center py-4">No comeback data available</div>
             </div>
         </template>
     </Card>
@@ -120,6 +120,6 @@ export default {
 
 <style scoped>
 .analytics-card {
-    @apply bg-gradient-to-br from-green-50 to-emerald-50 border-green-200;
+    @apply bg-surface-0 dark:bg-surface-800 border border-surface-200 dark:border-surface-700;
 }
 </style>

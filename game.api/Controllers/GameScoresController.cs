@@ -24,12 +24,13 @@ namespace game.api.Controllers
         public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetGameScores()
         {
             var gameScoreDtos = await _context.GameScores
+                .AsNoTracking()
                 .Include(gs => gs.Game)
-                .OrderBy(gs => gs.Game!.ScoringType == ScoringType.Time 
-                    ? (gs.CompletionTime.HasValue ? (int)gs.CompletionTime.Value.TotalSeconds : 0) 
+                .OrderBy(gs => gs.Game!.ScoringType == ScoringType.Time
+                    ? (gs.CompletionTime.HasValue ? (int)gs.CompletionTime.Value.TotalSeconds : 0)
                     : 0)
-                .ThenByDescending(gs => gs.Game!.ScoringType == ScoringType.Guesses 
-                    ? (gs.GuessCount ?? 0) 
+                .ThenByDescending(gs => gs.Game!.ScoringType == ScoringType.Guesses
+                    ? (gs.GuessCount ?? 0)
                     : 0)
                 .Select(gs => new GameScoreDto
                 {
@@ -38,14 +39,14 @@ namespace game.api.Controllers
                     PlayerName = gs.PlayerName,
                     GuessCount = gs.GuessCount,
                     CompletionTime = gs.CompletionTime,
-                    Score = gs.Game!.ScoringType == ScoringType.Time 
+                    Score = gs.Game!.ScoringType == ScoringType.Time
                         ? (int)(gs.CompletionTime.HasValue ? gs.CompletionTime.Value.TotalSeconds : 0)
                         : (gs.GuessCount ?? 0),
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = gs.Game!.Name,
                     ScoringType = gs.Game!.ScoringType,
-                    HasScoreImage = gs.ScoreImage != null
+                    HasScoreImage = gs.Image != null || gs.ScoreImage != null
                 })
                 .ToListAsync();
 
@@ -56,6 +57,7 @@ namespace game.api.Controllers
         public async Task<ActionResult<GameScoreDto>> GetGameScore(int id)
         {
             var gameScoreDto = await _context.GameScores
+                .AsNoTracking()
                 .Include(gs => gs.Game)
                 .Where(gs => gs.Id == id)
                 .Select(gs => new GameScoreDto
@@ -65,14 +67,14 @@ namespace game.api.Controllers
                     PlayerName = gs.PlayerName,
                     GuessCount = gs.GuessCount,
                     CompletionTime = gs.CompletionTime,
-                    Score = gs.Game!.ScoringType == ScoringType.Time 
+                    Score = gs.Game!.ScoringType == ScoringType.Time
                         ? (int)(gs.CompletionTime.HasValue ? gs.CompletionTime.Value.TotalSeconds : 0)
                         : (gs.GuessCount ?? 0),
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = gs.Game!.Name,
                     ScoringType = gs.Game!.ScoringType,
-                    HasScoreImage = gs.ScoreImage != null
+                    HasScoreImage = gs.Image != null || gs.ScoreImage != null
                 })
                 .FirstOrDefaultAsync();
 
@@ -87,10 +89,11 @@ namespace game.api.Controllers
         [HttpGet("game/{gameId}")]
         public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetGameScoresByGame(int gameId)
         {
-            var game = await _context.Games.FindAsync(gameId);
+            var game = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Id == gameId);
             if (game == null) return NotFound();
 
             var gameScores = await _context.GameScores
+                .AsNoTracking()
                 .Where(gs => gs.GameId == gameId)
                 .ToListAsync();
 
@@ -105,14 +108,14 @@ namespace game.api.Controllers
                     PlayerName = gs.PlayerName,
                     GuessCount = gs.GuessCount,
                     CompletionTime = gs.CompletionTime,
-                    Score = game.ScoringType == ScoringType.Time 
+                    Score = game.ScoringType == ScoringType.Time
                         ? (int)gs.CompletionTime!.Value.TotalSeconds
                         : gs.GuessCount!.Value,
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = game.Name,
                     ScoringType = game.ScoringType,
-                    HasScoreImage = gs.ScoreImage != null
+                    HasScoreImage = gs.Image != null || gs.ScoreImage != null
                 })
                 .OrderBy(gs => game.ScoringType == ScoringType.Time ? gs.Score : 0)
                 .ThenByDescending(gs => game.ScoringType == ScoringType.Guesses ? gs.Score : 0)
@@ -124,10 +127,11 @@ namespace game.api.Controllers
         [HttpGet("game/{gameId}/leaderboard")]
         public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetLeaderboard(int gameId, int top = 10)
         {
-            var game = await _context.Games.FindAsync(gameId);
+            var game = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Id == gameId);
             if (game == null) return NotFound();
 
             var gameScores = await _context.GameScores
+                .AsNoTracking()
                 .Where(gs => gs.GameId == gameId)
                 .ToListAsync();
 
@@ -142,14 +146,14 @@ namespace game.api.Controllers
                     PlayerName = gs.PlayerName,
                     GuessCount = gs.GuessCount,
                     CompletionTime = gs.CompletionTime,
-                    Score = game.ScoringType == ScoringType.Time 
+                    Score = game.ScoringType == ScoringType.Time
                         ? (int)gs.CompletionTime!.Value.TotalSeconds
                         : gs.GuessCount!.Value,
                     DateAchieved = gs.DateAchieved,
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = game.Name,
                     ScoringType = game.ScoringType,
-                    HasScoreImage = gs.ScoreImage != null
+                    HasScoreImage = gs.Image != null || gs.ScoreImage != null
                 })
                 .OrderBy(gs => game.ScoringType == ScoringType.Time ? gs.Score : 0)
                 .ThenByDescending(gs => game.ScoringType == ScoringType.Guesses ? gs.Score : 0)
@@ -162,13 +166,14 @@ namespace game.api.Controllers
         [HttpGet("game/{gameId}/leaderboard/day")]
         public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetDailyLeaderboard(int gameId, [FromQuery] DateTime? date = null, int top = 10)
         {
-            var game = await _context.Games.FindAsync(gameId);
+            var game = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Id == gameId);
             if (game == null) return NotFound();
 
             // Use Pacific day boundaries
             var (start, end, _) = TimeZoneHelper.GetPacificDayRange(date);
 
             var query = _context.GameScores
+                .AsNoTracking()
                 .Where(gs => gs.GameId == gameId && gs.DateAchieved >= start && gs.DateAchieved < end);
 
             if (game.ScoringType == ScoringType.Time)
@@ -197,7 +202,7 @@ namespace game.api.Controllers
                     LinkedInProfileUrl = gs.LinkedInProfileUrl,
                     GameName = game.Name,
                     ScoringType = game.ScoringType,
-                    HasScoreImage = gs.ScoreImage != null
+                    HasScoreImage = gs.Image != null || gs.ScoreImage != null
                 })
                 .Take(top)
                 .ToListAsync();
@@ -218,6 +223,9 @@ namespace game.api.Controllers
                 DateAchieved = DateTime.UtcNow
             };
 
+            _context.GameScores.Add(gameScore);
+            await _context.SaveChangesAsync(); // Save first to get the ID
+
             if (dto.ScoreImage != null && dto.ScoreImage.Length > 0)
             {
                 var allowedContentTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif" };
@@ -233,12 +241,19 @@ namespace game.api.Controllers
 
                 using var memoryStream = new MemoryStream();
                 await dto.ScoreImage.CopyToAsync(memoryStream);
-                gameScore.ScoreImage = memoryStream.ToArray();
-                gameScore.ImageContentType = dto.ScoreImage.ContentType;
-            }
 
-            _context.GameScores.Add(gameScore);
-            await _context.SaveChangesAsync();
+                // Save image to separate table for better performance
+                var gameScoreImage = new GameScoreImage
+                {
+                    GameScoreId = gameScore.Id,
+                    ImageData = memoryStream.ToArray(),
+                    ContentType = dto.ScoreImage.ContentType,
+                    UploadedDate = DateTime.UtcNow
+                };
+
+                _context.GameScoreImages.Add(gameScoreImage);
+                await _context.SaveChangesAsync();
+            }
 
             return CreatedAtAction(nameof(GetGameScore), new { id = gameScore.Id }, gameScore);
         }
@@ -246,27 +261,63 @@ namespace game.api.Controllers
         [HttpGet("{id}/image")]
         public async Task<IActionResult> GetGameScoreImage(int id)
         {
-            var gameScore = await _context.GameScores.FindAsync(id);
-            if (gameScore == null || gameScore.ScoreImage == null)
+            // Check new GameScoreImages table first
+            var scoreImage = await _context.GameScoreImages
+                .AsNoTracking()
+                .Where(gsi => gsi.GameScoreId == id)
+                .Select(gsi => new { gsi.ImageData, gsi.ContentType })
+                .FirstOrDefaultAsync();
+
+            if (scoreImage != null)
+            {
+                return File(scoreImage.ImageData, scoreImage.ContentType);
+            }
+
+            // Fallback to legacy ScoreImage field for backward compatibility
+            var legacyImage = await _context.GameScores
+                .AsNoTracking()
+                .Where(gs => gs.Id == id)
+                .Select(gs => new { gs.ScoreImage, gs.ImageContentType })
+                .FirstOrDefaultAsync();
+
+            if (legacyImage == null || legacyImage.ScoreImage == null)
             {
                 return NotFound();
             }
 
-            return File(gameScore.ScoreImage, gameScore.ImageContentType ?? "image/jpeg");
+            return File(legacyImage.ScoreImage, legacyImage.ImageContentType ?? "image/jpeg");
         }
 
         [HttpGet("{id}/image/thumbnail")]
         public async Task<IActionResult> GetGameScoreImageThumbnail(int id, [FromQuery] int width = 200, [FromQuery] int height = 150)
         {
-            var gameScore = await _context.GameScores.FindAsync(id);
-            if (gameScore == null || gameScore.ScoreImage == null)
+            // Check new GameScoreImages table first
+            var newImage = await _context.GameScoreImages
+                .AsNoTracking()
+                .Where(gsi => gsi.GameScoreId == id)
+                .Select(gsi => gsi.ImageData)
+                .FirstOrDefaultAsync();
+
+            byte[]? imageData = newImage;
+
+            // Fallback to legacy ScoreImage field if not found in new table
+            if (imageData == null)
+            {
+                imageData = await _context.GameScores
+                    .AsNoTracking()
+                    .Where(gs => gs.Id == id)
+                    .Select(gs => gs.ScoreImage)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (imageData == null)
             {
                 return NotFound();
             }
 
             try
             {
-                using var image = Image.Load(gameScore.ScoreImage);
+                using var image = Image.Load(imageData);
                 
                 // Resize image maintaining aspect ratio
                 image.Mutate(x => x.Resize(new ResizeOptions

@@ -111,42 +111,42 @@ export default {
 
             <div v-if="loading" class="text-center py-4">
                 <ProgressSpinner style="width: 40px; height: 40px" strokeWidth="4" />
-                <p class="text-gray-500 mt-2">Building distribution charts...</p>
+                <p class="text-muted-color mt-2">Building distribution charts...</p>
             </div>
             <div v-else-if="error" class="text-red-600 text-center py-4">
                 {{ error }}
             </div>
             <div v-else-if="data">
                 <div class="text-center mb-4">
-                    <div class="text-sm text-gray-600">{{ getScoringTypeLabel(data.scoringType) }} distribution ({{ data.daysAnalyzed }} days)</div>
+                    <div class="text-sm text-muted-color">{{ getScoringTypeLabel(data.scoringType) }} distribution ({{ data.daysAnalyzed }} days)</div>
                 </div>
 
                 <div v-if="data.games && data.games.length > 0" class="space-y-6">
-                    <div v-for="game in data.games" :key="game.gameId" class="border rounded-lg p-4">
+                    <div v-for="game in data.games" :key="game.gameId" class="border border-surface-200 dark:border-surface-700 rounded-lg p-4">
                         <div class="flex justify-between items-center mb-4">
-                            <h4 class="font-semibold text-gray-800">{{ game.gameName }}</h4>
+                            <h4 class="font-semibold text-surface-900 dark:text-surface-0">{{ game.gameName }}</h4>
                             <Badge :value="`${game.totalScores} scores`" severity="info" />
                         </div>
 
                         <div v-if="game.totalScores > 0" class="space-y-3">
                             <div v-for="(count, range) in game.distribution" :key="range" class="flex items-center gap-3">
-                                <div class="w-20 text-sm font-medium text-gray-700">
+                                <div class="w-20 text-sm font-medium text-surface-900 dark:text-surface-0">
                                     {{ formatRangeLabel(range, data.scoringType) }}
                                 </div>
                                 <div class="flex-1 relative">
-                                    <div class="bg-gray-200 rounded-full h-6 overflow-hidden">
+                                    <div class="bg-surface-200 dark:bg-surface-700 rounded-full h-6 overflow-hidden">
                                         <div class="h-full transition-all duration-500 rounded-full" :class="getBarColor(range, data.scoringType)" :style="{ width: `${getPercentage(count, game.totalScores)}%` }"></div>
                                     </div>
-                                    <div class="absolute inset-0 flex items-center justify-center text-xs font-medium text-gray-700">{{ count }} ({{ getPercentage(count, game.totalScores).toFixed(1) }}%)</div>
+                                    <div class="absolute inset-0 flex items-center justify-center text-xs font-medium text-surface-900 dark:text-surface-0">{{ count }} ({{ getPercentage(count, game.totalScores).toFixed(1) }}%)</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div v-else class="text-gray-500 text-center py-4">No scores available for this game type</div>
+                        <div v-else class="text-muted-color text-center py-4">No scores available for this game type</div>
                     </div>
                 </div>
 
-                <div v-else class="text-gray-500 text-center py-4">No games found for {{ getScoringTypeLabel(selectedScoringType) }} scoring</div>
+                <div v-else class="text-muted-color text-center py-4">No games found for {{ getScoringTypeLabel(selectedScoringType) }} scoring</div>
             </div>
         </template>
     </Card>
@@ -154,6 +154,6 @@ export default {
 
 <style scoped>
 .analytics-card {
-    @apply bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200;
+    @apply bg-surface-0 dark:bg-surface-800 border border-surface-200 dark:border-surface-700;
 }
 </style>
