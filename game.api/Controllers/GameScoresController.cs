@@ -87,15 +87,42 @@ namespace game.api.Controllers
         }
 
         [HttpGet("game/{gameId}")]
-        public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetGameScoresByGame(int gameId)
+        public async Task<ActionResult<IEnumerable<GameScoreDto>>> GetGameScoresByGame(
+            int gameId,
+            [FromQuery] DateTime? date = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
         {
             var game = await _context.Games.AsNoTracking().FirstOrDefaultAsync(g => g.Id == gameId);
             if (game == null) return NotFound();
 
-            var gameScores = await _context.GameScores
+            IQueryable<GameScore> query = _context.GameScores
                 .AsNoTracking()
-                .Where(gs => gs.GameId == gameId)
-                .ToListAsync();
+                .Where(gs => gs.GameId == gameId);
+
+            // Apply date filtering using indexes
+            if (date.HasValue)
+            {
+                // Filter by specific date using Pacific time zone boundaries
+                var (start, end, _) = TimeZoneHelper.GetPacificDayRange(date);
+                query = query.Where(gs => gs.DateAchieved >= start && gs.DateAchieved < end);
+            }
+            else if (startDate.HasValue || endDate.HasValue)
+            {
+                // Filter by date range
+                if (startDate.HasValue)
+                {
+                    var startUtc = DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc);
+                    query = query.Where(gs => gs.DateAchieved >= startUtc);
+                }
+                if (endDate.HasValue)
+                {
+                    var endUtc = DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc);
+                    query = query.Where(gs => gs.DateAchieved <= endUtc);
+                }
+            }
+
+            var gameScores = await query.ToListAsync();
 
             var gameScoreDtos = gameScores
                 .Where(gs => 

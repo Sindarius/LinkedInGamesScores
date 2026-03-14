@@ -12,14 +12,10 @@ export class GameService {
     async getGameScores(gameId, date = null) {
         let url = `${API_BASE_URL}/gamescores/game/${gameId}`;
         if (date) {
-            // Filter by date on the client side for now
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error('Failed to fetch game scores');
-            }
-            const scores = await response.json();
-            const targetDate = new Date(date).toDateString();
-            return scores.filter((score) => new Date(score.dateAchieved).toDateString() === targetDate);
+            // Use server-side date filtering for better performance
+            const d = new Date(date);
+            const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+            url += `?date=${iso}`;
         }
         const response = await fetch(url);
         if (!response.ok) {
@@ -117,14 +113,18 @@ export class GameService {
     }
 
     async getScoresByDateRange(gameId, startDate, endDate) {
-        const scores = await this.getGameScores(gameId);
+        // Use server-side date range filtering for better performance
         const start = new Date(startDate);
         const end = new Date(endDate);
+        const startIso = start.toISOString();
+        const endIso = end.toISOString();
 
-        return scores.filter((score) => {
-            const scoreDate = new Date(score.dateAchieved);
-            return scoreDate >= start && scoreDate <= end;
-        });
+        const url = `${API_BASE_URL}/gamescores/game/${gameId}?startDate=${startIso}&endDate=${endIso}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to fetch game scores by date range');
+        }
+        return await response.json();
     }
 
     getAvailableDates(scores) {
