@@ -414,6 +414,9 @@ export default {
                     await gameService.submitScore(gameScore);
                 }
 
+                // Clear caches to show updated data
+                gameService.clearAllCaches();
+
                 toast.add({
                     severity: 'success',
                     summary: 'Success',

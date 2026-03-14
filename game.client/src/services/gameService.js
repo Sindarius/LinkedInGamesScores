@@ -1,6 +1,13 @@
 const API_BASE_URL = '/api';
 
 export class GameService {
+    constructor() {
+        // Cache for player temperature data to prevent duplicate requests
+        this.playerTemperatureCache = new Map();
+        this.leaderboardCache = new Map();
+        this.cacheExpiry = 60000; // 60 seconds
+    }
+
     async getGames() {
         const response = await fetch(`${API_BASE_URL}/games`);
         if (!response.ok) {
@@ -25,21 +32,39 @@ export class GameService {
     }
 
     async getLeaderboard(gameId, date = null, top = 10) {
+        const cacheKey = `leaderboard_${gameId}_${date || 'all'}_${top}`;
+
+        // Check cache first
+        const cached = this.leaderboardCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
+            return cached.data;
+        }
+
+        // Fetch from API
+        let response;
         if (date) {
             const d = new Date(date);
             const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
-            const response = await fetch(`${API_BASE_URL}/gamescores/game/${gameId}/leaderboard/day?date=${iso}&top=${top}`);
+            response = await fetch(`${API_BASE_URL}/gamescores/game/${gameId}/leaderboard/day?date=${iso}&top=${top}`);
             if (!response.ok) {
                 throw new Error('Failed to fetch daily leaderboard');
             }
-            return await response.json();
+        } else {
+            response = await fetch(`${API_BASE_URL}/gamescores/game/${gameId}/leaderboard?top=${top}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch leaderboard');
+            }
         }
 
-        const response = await fetch(`${API_BASE_URL}/gamescores/game/${gameId}/leaderboard?top=${top}`);
-        if (!response.ok) {
-            throw new Error('Failed to fetch leaderboard');
-        }
-        return await response.json();
+        const data = await response.json();
+
+        // Store in cache
+        this.leaderboardCache.set(cacheKey, {
+            data,
+            timestamp: Date.now()
+        });
+
+        return data;
     }
 
     async submitScore(gameScore) {
@@ -180,11 +205,44 @@ export class GameService {
     }
 
     async getPlayerTemperature(playerName, days = 7) {
+        const cacheKey = `${playerName.toLowerCase()}_${days}`;
+
+        // Check cache first
+        const cached = this.playerTemperatureCache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < this.cacheExpiry) {
+            return cached.data;
+        }
+
+        // Fetch from API
         const encodedPlayerName = encodeURIComponent(playerName);
         const response = await fetch(`${API_BASE_URL}/analytics/player-temperature/${encodedPlayerName}?days=${days}`);
         if (!response.ok) {
             throw new Error('Failed to fetch player temperature data');
         }
-        return await response.json();
+        const data = await response.json();
+
+        // Store in cache
+        this.playerTemperatureCache.set(cacheKey, {
+            data,
+            timestamp: Date.now()
+        });
+
+        return data;
+    }
+
+    // Clear all caches (call when new scores are submitted or when data needs refresh)
+    clearAllCaches() {
+        this.playerTemperatureCache.clear();
+        this.leaderboardCache.clear();
+    }
+
+    // Clear player temperature cache only
+    clearPlayerTemperatureCache() {
+        this.playerTemperatureCache.clear();
+    }
+
+    // Clear leaderboard cache only
+    clearLeaderboardCache() {
+        this.leaderboardCache.clear();
     }
 }
