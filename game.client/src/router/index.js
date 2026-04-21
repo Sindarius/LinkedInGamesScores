@@ -19,6 +19,11 @@ const router = createRouter({
                     component: () => import('@/views/Admin.vue')
                 },
                 {
+                    path: '/quick-submit',
+                    name: 'quicksubmit',
+                    component: () => import('@/views/QuickSubmit.vue')
+                },
+                {
                     path: '/ocr-training',
                     name: 'ocrtraining',
                     component: () => import('@/views/OCRTraining.vue')
