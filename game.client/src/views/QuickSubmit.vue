@@ -82,6 +82,7 @@ export default {
                     seconds: null,
                     ranOutOfGuesses: false,
                     scoreConfidence: null, // 'high' | 'medium' | null
+                    detectedScoreLabel: null, // e.g. "2:45" or "3 guesses" — shown for user verification
                     status: 'queued' // queued | processing | needs-review | ready | submitted | error
                 };
 
@@ -97,6 +98,32 @@ export default {
             runOcrQueue();
         };
 
+        // ── OCR helpers ────────────────────────────────────────────────────────
+
+        // Strip lines that contain average stats — same logic as ScoreSubmissionForm.
+        // LinkedIn screenshots often show "avg 1:30" or "Your average: 2:15" which
+        // parseLinkedInGameScore would match before the player's actual score.
+        const filterOcrText = (text) => {
+            return text
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter((l) => l.length > 0)
+                .filter((l) => !l.toLowerCase().includes('avg') && !l.toLowerCase().includes('average'))
+                .join('\n');
+        };
+
+        const formatDetectedScore = (parsed, scoringType) => {
+            if (!parsed) return null;
+            if (parsed.isDNF) return 'DNF';
+            if (scoringType === 2 && parsed.minutes !== undefined) {
+                return `${parsed.minutes}:${String(parsed.seconds ?? 0).padStart(2, '0')}`;
+            }
+            if (scoringType === 1 && parsed.guessCount !== undefined) {
+                return `${parsed.guessCount} guess${parsed.guessCount === 1 ? '' : 'es'}`;
+            }
+            return null;
+        };
+
         // ── OCR queue — process one at a time ─────────────────────────────────
 
         const runOcrQueue = async () => {
@@ -108,17 +135,19 @@ export default {
             next.status = 'processing';
 
             try {
-                const text = await ocrService.extractTextFromImage(next.file);
-                next.ocrText = text;
+                const rawText = await ocrService.extractTextFromImage(next.file);
+                next.ocrText = rawText;
+                const filteredText = filterOcrText(rawText);
 
-                const detectedGame = detectGameFromText(text);
+                const detectedGame = detectGameFromText(rawText); // game names won't be in avg lines
                 if (detectedGame) {
                     next.selectedGame = detectedGame;
                     const gameType = detectedGame.scoringType === 1 ? 'guess' : 'time';
-                    const parsed = ocrService.parseLinkedInGameScore(text, gameType);
+                    const parsed = ocrService.parseLinkedInGameScore(filteredText, gameType);
                     if (parsed) {
                         applyParsedScore(next, parsed);
                         next.scoreConfidence = parsed.confidence || 'high';
+                        next.detectedScoreLabel = formatDetectedScore(parsed, detectedGame.scoringType);
                         next.status = 'ready';
                     } else {
                         next.status = 'needs-review';
@@ -198,14 +227,17 @@ export default {
             entry.seconds = null;
             entry.ranOutOfGuesses = false;
             entry.scoreConfidence = null;
+            entry.detectedScoreLabel = null;
 
             // Re-parse OCR text with new game type if we have it
             if (entry.ocrText && entry.selectedGame) {
+                const filteredText = filterOcrText(entry.ocrText);
                 const gameType = entry.selectedGame.scoringType === 1 ? 'guess' : 'time';
-                const parsed = ocrService.parseLinkedInGameScore(entry.ocrText, gameType);
+                const parsed = ocrService.parseLinkedInGameScore(filteredText, gameType);
                 if (parsed) {
                     applyParsedScore(entry, parsed);
                     entry.scoreConfidence = parsed.confidence || 'high';
+                    entry.detectedScoreLabel = formatDetectedScore(parsed, entry.selectedGame.scoringType);
                 }
             }
             onFieldChange(entry);
@@ -214,19 +246,23 @@ export default {
         const rerunOcr = async (entry) => {
             entry.status = 'processing';
             entry.scoreConfidence = null;
+            entry.detectedScoreLabel = null;
             try {
-                const text = await ocrService.extractTextFromImage(entry.file);
-                entry.ocrText = text;
-                const detectedGame = detectGameFromText(text);
+                const rawText = await ocrService.extractTextFromImage(entry.file);
+                entry.ocrText = rawText;
+                const filteredText = filterOcrText(rawText);
+
+                const detectedGame = detectGameFromText(rawText);
                 if (detectedGame) entry.selectedGame = detectedGame;
 
                 const gameToUse = entry.selectedGame;
                 if (gameToUse) {
                     const gameType = gameToUse.scoringType === 1 ? 'guess' : 'time';
-                    const parsed = ocrService.parseLinkedInGameScore(text, gameType);
+                    const parsed = ocrService.parseLinkedInGameScore(filteredText, gameType);
                     if (parsed) {
                         applyParsedScore(entry, parsed);
                         entry.scoreConfidence = parsed.confidence || 'high';
+                        entry.detectedScoreLabel = formatDetectedScore(parsed, gameToUse.scoringType);
                         entry.status = 'ready';
                         return;
                     }
@@ -551,6 +587,14 @@ export default {
 
                                 <div v-else class="flex items-end pb-1">
                                     <p class="text-sm text-gray-400 italic">Select a game to enter the score</p>
+                                </div>
+
+                                <!-- OCR reading confirmation -->
+                                <div v-if="entry.detectedScoreLabel" class="sm:col-span-2">
+                                    <p class="text-xs text-gray-400">
+                                        <i class="pi pi-eye text-xs mr-1"></i>OCR read: <span class="font-mono font-medium text-gray-600">{{ entry.detectedScoreLabel }}</span>
+                                        <span v-if="entry.scoreConfidence === 'medium'" class="text-yellow-500 ml-1">— medium confidence, please verify</span>
+                                    </p>
                                 </div>
                             </div>
                         </div>
