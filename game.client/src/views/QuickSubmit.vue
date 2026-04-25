@@ -1,20 +1,27 @@
 <script>
 import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import { useRouter } from 'vue-router';
 import { usePlayerStore } from '@/stores/playerStore.js';
 import { GameService } from '@/services/gameService.js';
 import { ocrService } from '@/services/ocrService.js';
+
+let nextId = 1;
 
 export default {
     name: 'QuickSubmit',
     emits: ['scoreSubmitted'],
     setup(props, { emit }) {
         const toast = useToast();
+        const router = useRouter();
         const playerStore = usePlayerStore();
         const gameService = new GameService();
 
+        const games = ref([]);
+        const uploads = ref([]); // array of upload entries
         const isSubmittingAll = ref(false);
-        const gameEntries = ref([]);
+        const isDragging = ref(false);
+        const isProcessingOCR = ref(false); // true while any OCR is running
 
         const playerName = computed({
             get: () => playerStore.playerName,
@@ -33,169 +40,213 @@ export default {
 
         const loadGames = async () => {
             try {
-                const games = await gameService.getGames();
-                gameEntries.value = games.map((game) => ({
-                    game,
-                    scoreImage: null,
-                    imagePreview: null,
-                    guessCount: null,
-                    minutes: null,
-                    seconds: null,
-                    ranOutOfGuesses: false,
-                    isParsingOCR: false,
-                    isDragging: false,
-                    status: 'pending' // pending | ready | submitted | error
-                }));
+                games.value = await gameService.getGames();
             } catch (error) {
                 console.error('Error loading games:', error);
                 toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load games' });
             }
         };
 
-        const handleFileDrop = (entry, event) => {
-            entry.isDragging = false;
-            const file = event.dataTransfer?.files?.[0];
-            if (file) processFile(entry, file);
+        // ── File handling ──────────────────────────────────────────────────────
+
+        const handleDrop = (event) => {
+            isDragging.value = false;
+            const files = [...(event.dataTransfer?.files || [])];
+            addFiles(files);
         };
 
-        const handleFileSelect = (entry, event) => {
-            const file = event.target?.files?.[0];
-            if (file) processFile(entry, file);
+        const handleFileSelect = (event) => {
+            const files = [...(event.target?.files || [])];
+            addFiles(files);
             event.target.value = '';
         };
 
-        const processFile = (entry, file) => {
-            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-            if (!allowedTypes.includes(file.type)) {
-                toast.add({ severity: 'error', summary: 'Invalid File', detail: 'Only JPEG, PNG, GIF allowed' });
-                return;
-            }
-            if (file.size > 5 * 1024 * 1024) {
-                toast.add({ severity: 'error', summary: 'File Too Large', detail: 'Max 5MB per image' });
-                return;
+        const addFiles = (files) => {
+            const imageFiles = files.filter((f) => ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(f.type) && f.size <= 5 * 1024 * 1024);
+
+            const oversized = files.filter((f) => f.size > 5 * 1024 * 1024);
+            const invalid = files.filter((f) => !['image/jpeg', 'image/jpg', 'image/png', 'image/gif'].includes(f.type) && f.size <= 5 * 1024 * 1024);
+
+            if (oversized.length) toast.add({ severity: 'warn', summary: 'Files Skipped', detail: `${oversized.length} file(s) exceed 5MB`, life: 4000 });
+            if (invalid.length) toast.add({ severity: 'warn', summary: 'Files Skipped', detail: `${invalid.length} file(s) are not valid images`, life: 4000 });
+
+            for (const file of imageFiles) {
+                const entry = {
+                    id: nextId++,
+                    file,
+                    imagePreview: null,
+                    ocrText: null,
+                    selectedGame: null,
+                    guessCount: null,
+                    minutes: null,
+                    seconds: null,
+                    ranOutOfGuesses: false,
+                    scoreConfidence: null, // 'high' | 'medium' | null
+                    status: 'queued' // queued | processing | needs-review | ready | submitted | error
+                };
+
+                // Build preview immediately
+                const reader = new FileReader();
+                reader.onload = (e) => (entry.imagePreview = e.target.result);
+                reader.readAsDataURL(file);
+
+                uploads.value.push(entry);
             }
 
-            entry.scoreImage = file;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                entry.imagePreview = e.target.result;
-                autoDetectScore(entry);
-            };
-            reader.readAsDataURL(file);
+            // Kick off OCR queue
+            runOcrQueue();
         };
 
-        const removeImage = (entry) => {
-            entry.scoreImage = null;
-            entry.imagePreview = null;
-            if (entry.status !== 'submitted') {
-                entry.status = 'pending';
-            }
-        };
+        // ── OCR queue — process one at a time ─────────────────────────────────
 
-        const autoDetectScore = async (entry) => {
-            entry.isParsingOCR = true;
+        const runOcrQueue = async () => {
+            if (isProcessingOCR.value) return; // already running
+            const next = uploads.value.find((e) => e.status === 'queued');
+            if (!next) return;
+
+            isProcessingOCR.value = true;
+            next.status = 'processing';
+
             try {
-                const text = await ocrService.extractTextFromImage(entry.scoreImage);
-                const gameType = entry.game.scoringType === 1 ? 'guess' : 'time';
+                const text = await ocrService.extractTextFromImage(next.file);
+                next.ocrText = text;
 
-                // Try ocrService parser first
-                const parsed = ocrService.parseLinkedInGameScore(text, gameType);
-                if (parsed) {
-                    applyScore(entry, parsed);
-                    if (isEntryValid(entry)) entry.status = 'ready';
-                    return;
-                }
-
-                // Fallback: extract from lines
-                const lines = text
-                    .split(/\r?\n/)
-                    .map((l) => l.trim())
-                    .filter((l) => l.length);
-                const cleanLines = lines.filter((l) => !l.toLowerCase().includes('avg') && !l.toLowerCase().includes('average'));
-
-                const result = gameType === 'time' ? extractTimeScore(cleanLines) : extractGuessScore(cleanLines);
-                if (result) {
-                    applyScore(entry, result);
-                    if (isEntryValid(entry)) entry.status = 'ready';
+                const detectedGame = detectGameFromText(text);
+                if (detectedGame) {
+                    next.selectedGame = detectedGame;
+                    const gameType = detectedGame.scoringType === 1 ? 'guess' : 'time';
+                    const parsed = ocrService.parseLinkedInGameScore(text, gameType);
+                    if (parsed) {
+                        applyParsedScore(next, parsed);
+                        next.scoreConfidence = parsed.confidence || 'high';
+                        next.status = 'ready';
+                    } else {
+                        next.status = 'needs-review';
+                    }
+                } else {
+                    next.status = 'needs-review';
                 }
             } catch (e) {
-                console.error('OCR failed for', entry.game.name, e);
+                console.error('OCR error', e);
+                next.status = 'needs-review';
             } finally {
-                entry.isParsingOCR = false;
+                isProcessingOCR.value = false;
+                // Process next in queue
+                const remaining = uploads.value.find((e) => e.status === 'queued');
+                if (remaining) runOcrQueue();
             }
         };
 
-        const applyScore = (entry, result) => {
-            if (result.type === 'time' || result.minutes !== undefined) {
-                entry.minutes = result.minutes ?? null;
-                entry.seconds = result.seconds ?? null;
-                entry.ranOutOfGuesses = false;
-                entry.guessCount = null;
-            } else if (result.type === 'guess' || result.guessCount !== undefined || result.isDNF) {
-                if (result.isDNF) {
-                    entry.ranOutOfGuesses = true;
-                    entry.guessCount = null;
-                } else {
-                    entry.guessCount = result.guessCount ?? null;
-                    entry.ranOutOfGuesses = false;
+        // ── Score helpers ──────────────────────────────────────────────────────
+
+        const detectGameFromText = (text) => {
+            const lines = text
+                .split(/\r?\n/)
+                .map((l) => l.trim())
+                .filter((l) => l.length > 0);
+
+            for (const game of games.value) {
+                const gameName = game.name.toLowerCase();
+                for (const line of lines) {
+                    if (line.toLowerCase().includes(gameName)) return game;
                 }
+            }
+            return null;
+        };
+
+        const applyParsedScore = (entry, parsed) => {
+            if (parsed.isDNF) {
+                entry.ranOutOfGuesses = true;
+                entry.guessCount = null;
+                entry.minutes = null;
+                entry.seconds = null;
+            } else if (parsed.minutes !== undefined) {
+                entry.minutes = parsed.minutes;
+                entry.seconds = parsed.seconds;
+                entry.guessCount = null;
+                entry.ranOutOfGuesses = false;
+            } else if (parsed.guessCount !== undefined) {
+                entry.guessCount = parsed.guessCount;
+                entry.ranOutOfGuesses = false;
                 entry.minutes = null;
                 entry.seconds = null;
             }
         };
 
-        const extractTimeScore = (lines) => {
-            for (const line of lines) {
-                const cleanLine = line.replace(/solved\s+in\s*/gi, '').trim();
-                for (const pattern of [/^(\d{1,2}):(\d{2})$/, /^\s*(\d{1,2}):(\d{2})\s*$/]) {
-                    const match = cleanLine.match(pattern);
-                    if (match) {
-                        const m = parseInt(match[1]);
-                        const s = parseInt(match[2]);
-                        if (m >= 0 && m < 60 && s >= 0 && s < 60) return { type: 'time', minutes: m, seconds: s };
-                    }
-                }
-            }
-            return null;
-        };
-
-        const extractGuessScore = (lines) => {
-            for (const line of lines) {
-                const cleanLine = line.replace(/solved\s+in\s*/gi, '').trim();
-                const lowerLine = cleanLine.toLowerCase();
-                for (const pattern of [/better\s*luck\s*next\s*time/gi, /dnf/gi, /did\s*not\s*finish/gi, /x\s*\/\s*\d+/gi]) {
-                    if (pattern.test(lowerLine)) return { type: 'guess', isDNF: true };
-                }
-                if (lowerLine.includes('guess')) {
-                    const match = cleanLine.match(/(\d+)\s*guesses?/i);
-                    if (match) {
-                        const g = parseInt(match[1]);
-                        if (g >= 1 && g <= 10) return { type: 'guess', guessCount: g };
-                    }
-                }
-            }
-            return null;
-        };
-
         const isEntryValid = (entry) => {
-            if (entry.game.scoringType === 1) {
+            if (!entry.selectedGame) return false;
+            if (entry.selectedGame.scoringType === 1) {
                 return entry.ranOutOfGuesses || (entry.guessCount && entry.guessCount > 0);
-            } else if (entry.game.scoringType === 2) {
+            }
+            if (entry.selectedGame.scoringType === 2) {
                 const m = entry.minutes || 0;
                 return entry.seconds !== null && entry.seconds >= 0 && entry.seconds < 60 && (m > 0 || entry.seconds > 0);
             }
             return false;
         };
 
-        const onScoreInput = (entry) => {
+        const onFieldChange = (entry) => {
             if (entry.status !== 'submitted') {
-                entry.status = isEntryValid(entry) ? 'ready' : 'pending';
+                entry.status = isEntryValid(entry) ? 'ready' : 'needs-review';
             }
         };
 
-        const readyEntries = computed(() => gameEntries.value.filter((e) => isEntryValid(e) && e.status !== 'submitted'));
+        const onGameChange = (entry) => {
+            // Reset score fields when game changes
+            entry.guessCount = null;
+            entry.minutes = null;
+            entry.seconds = null;
+            entry.ranOutOfGuesses = false;
+            entry.scoreConfidence = null;
 
-        const submittedCount = computed(() => gameEntries.value.filter((e) => e.status === 'submitted').length);
+            // Re-parse OCR text with new game type if we have it
+            if (entry.ocrText && entry.selectedGame) {
+                const gameType = entry.selectedGame.scoringType === 1 ? 'guess' : 'time';
+                const parsed = ocrService.parseLinkedInGameScore(entry.ocrText, gameType);
+                if (parsed) {
+                    applyParsedScore(entry, parsed);
+                    entry.scoreConfidence = parsed.confidence || 'high';
+                }
+            }
+            onFieldChange(entry);
+        };
+
+        const rerunOcr = async (entry) => {
+            entry.status = 'processing';
+            entry.scoreConfidence = null;
+            try {
+                const text = await ocrService.extractTextFromImage(entry.file);
+                entry.ocrText = text;
+                const detectedGame = detectGameFromText(text);
+                if (detectedGame) entry.selectedGame = detectedGame;
+
+                const gameToUse = entry.selectedGame;
+                if (gameToUse) {
+                    const gameType = gameToUse.scoringType === 1 ? 'guess' : 'time';
+                    const parsed = ocrService.parseLinkedInGameScore(text, gameType);
+                    if (parsed) {
+                        applyParsedScore(entry, parsed);
+                        entry.scoreConfidence = parsed.confidence || 'high';
+                        entry.status = 'ready';
+                        return;
+                    }
+                }
+                entry.status = 'needs-review';
+            } catch (e) {
+                entry.status = 'needs-review';
+            }
+        };
+
+        const removeUpload = (entry) => {
+            uploads.value = uploads.value.filter((u) => u.id !== entry.id);
+        };
+
+        // ── Submission ─────────────────────────────────────────────────────────
+
+        const readyEntries = computed(() => uploads.value.filter((e) => e.status === 'ready'));
+        const needsReviewCount = computed(() => uploads.value.filter((e) => e.status === 'needs-review').length);
+        const submittedCount = computed(() => uploads.value.filter((e) => e.status === 'submitted').length);
+        const processingCount = computed(() => uploads.value.filter((e) => e.status === 'processing' || e.status === 'queued').length);
 
         const submitAll = async () => {
             if (!playerName.value?.trim()) {
@@ -203,13 +254,13 @@ export default {
                 return;
             }
             if (!readyEntries.value.length) {
-                toast.add({ severity: 'warn', summary: 'No Scores Ready', detail: 'Enter at least one score before submitting' });
+                toast.add({ severity: 'warn', summary: 'No Scores Ready', detail: 'Review and correct any flagged items first' });
                 return;
             }
 
             isSubmittingAll.value = true;
-
-            const results = await Promise.allSettled(readyEntries.value.map((entry) => submitEntry(entry)));
+            const results = await Promise.allSettled(readyEntries.value.map((e) => submitEntry(e)));
+            isSubmittingAll.value = false;
 
             const succeeded = results.filter((r) => r.status === 'fulfilled').length;
             const failed = results.filter((r) => r.status === 'rejected').length;
@@ -220,85 +271,93 @@ export default {
                 toast.add({
                     severity: failed ? 'warn' : 'success',
                     summary: failed ? 'Partial Success' : 'All Submitted!',
-                    detail: `${succeeded} score${succeeded !== 1 ? 's' : ''} submitted${failed ? `, ${failed} failed` : ''}`,
-                    life: 5000
+                    detail: `${succeeded} score${succeeded !== 1 ? 's' : ''} submitted${failed ? `, ${failed} failed — fix and resubmit` : ''}`,
+                    life: 4000
                 });
+                // Navigate back to leaderboards after a short delay so the toast is visible
+                if (!failed) {
+                    setTimeout(() => router.push('/'), 1500);
+                }
             } else {
                 toast.add({ severity: 'error', summary: 'Submission Failed', detail: 'All submissions failed. Please try again.', life: 5000 });
             }
-
-            isSubmittingAll.value = false;
         };
 
         const submitEntry = async (entry) => {
             const gameScore = {
-                gameId: entry.game.id,
+                gameId: entry.selectedGame.id,
                 playerName: playerName.value,
                 linkedInProfileUrl: linkedinUrl.value || null
             };
 
-            if (entry.game.scoringType === 1) {
+            if (entry.selectedGame.scoringType === 1) {
                 gameScore.guessCount = entry.ranOutOfGuesses ? 99 : entry.guessCount;
-            } else if (entry.game.scoringType === 2) {
-                const totalSeconds = (entry.minutes || 0) * 60 + (entry.seconds || 0);
-                gameScore.completionTime = `${Math.floor(totalSeconds / 3600).toString().padStart(2, '0')}:${Math.floor((totalSeconds % 3600) / 60).toString().padStart(2, '0')}:${(totalSeconds % 60).toString().padStart(2, '0')}`;
+            } else if (entry.selectedGame.scoringType === 2) {
+                const total = (entry.minutes || 0) * 60 + (entry.seconds || 0);
+                gameScore.completionTime = `${Math.floor(total / 3600).toString().padStart(2, '0')}:${Math.floor((total % 3600) / 60).toString().padStart(2, '0')}:${(total % 60).toString().padStart(2, '0')}`;
             }
 
             try {
-                if (entry.scoreImage) {
-                    await gameService.submitScoreWithImage(gameScore, entry.scoreImage);
+                if (entry.file) {
+                    await gameService.submitScoreWithImage(gameScore, entry.file);
                 } else {
                     await gameService.submitScore(gameScore);
                 }
                 entry.status = 'submitted';
-            } catch (error) {
+            } catch (err) {
                 entry.status = 'error';
-                throw error;
+                throw err;
             }
         };
 
-        const resetEntry = (entry) => {
-            entry.scoreImage = null;
-            entry.imagePreview = null;
-            entry.guessCount = null;
-            entry.minutes = null;
-            entry.seconds = null;
-            entry.ranOutOfGuesses = false;
-            entry.status = 'pending';
+        const clearSubmitted = () => {
+            uploads.value = uploads.value.filter((e) => e.status !== 'submitted');
         };
 
-        const triggerFileInput = (gameId) => {
-            document.getElementById(`file-input-${gameId}`)?.click();
+        const triggerFileInput = () => document.getElementById('bulk-file-input')?.click();
+
+        // ── Status helpers ─────────────────────────────────────────────────────
+
+        const statusConfig = {
+            queued: { label: 'Queued', severity: 'secondary', icon: 'pi-clock' },
+            processing: { label: 'Scanning...', severity: 'info', icon: 'pi-spin pi-spinner' },
+            'needs-review': { label: 'Needs Review', severity: 'warn', icon: 'pi-exclamation-triangle' },
+            ready: { label: 'Ready', severity: 'success', icon: 'pi-check' },
+            submitted: { label: 'Submitted', severity: 'success', icon: 'pi-check-circle' },
+            error: { label: 'Error', severity: 'danger', icon: 'pi-times-circle' }
         };
 
-        const statusLabel = (status) => {
-            const map = { pending: 'Pending', ready: 'Ready', submitted: 'Submitted', error: 'Error' };
-            return map[status] || status;
-        };
+        const getStatusConfig = (status) => statusConfig[status] || statusConfig['queued'];
 
-        const statusSeverity = (status) => {
-            const map = { pending: 'secondary', ready: 'warn', submitted: 'success', error: 'danger' };
-            return map[status] || 'secondary';
+        const confidenceBadge = (conf) => {
+            if (conf === 'high') return { label: 'High confidence', class: 'text-green-600' };
+            if (conf === 'medium') return { label: 'Medium confidence — please verify', class: 'text-yellow-600' };
+            return null;
         };
 
         return {
-            gameEntries,
+            games,
+            uploads,
             playerName,
             linkedinUrl,
             isSubmittingAll,
+            isDragging,
             readyEntries,
+            needsReviewCount,
             submittedCount,
-            isEntryValid,
-            onScoreInput,
-            handleFileDrop,
+            processingCount,
+            handleDrop,
             handleFileSelect,
-            removeImage,
-            autoDetectScore,
-            submitAll,
-            resetEntry,
             triggerFileInput,
-            statusLabel,
-            statusSeverity
+            removeUpload,
+            rerunOcr,
+            onFieldChange,
+            onGameChange,
+            isEntryValid,
+            submitAll,
+            clearSubmitted,
+            getStatusConfig,
+            confidenceBadge
         };
     }
 };
@@ -306,9 +365,10 @@ export default {
 
 <template>
     <div class="quick-submit-page">
+        <!-- Header -->
         <div class="mb-6">
             <h1 class="text-3xl font-bold text-gray-900 mb-2">Quick Submit</h1>
-            <p class="text-gray-600">Upload all your game screenshots at once and submit in one click.</p>
+            <p class="text-gray-600">Drop all your screenshots at once — we'll scan each one and fill in the scores automatically.</p>
         </div>
 
         <!-- Player Info -->
@@ -321,141 +381,213 @@ export default {
             </template>
             <template #content>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="field">
-                        <label class="block text-sm font-medium mb-2" for="qs-playerName">Player Name <span class="text-red-500">*</span></label>
-                        <InputText id="qs-playerName" v-model="playerName" placeholder="Enter your name" class="w-full" />
+                    <div>
+                        <label class="block text-sm font-medium mb-2" for="qs-name">Player Name <span class="text-red-500">*</span></label>
+                        <InputText id="qs-name" v-model="playerName" placeholder="Enter your name" class="w-full" />
                     </div>
-                    <div class="field">
-                        <label class="block text-sm font-medium mb-2" for="qs-linkedinUrl">LinkedIn Profile URL (Optional)</label>
-                        <InputText id="qs-linkedinUrl" v-model="linkedinUrl" placeholder="https://linkedin.com/in/yourprofile" class="w-full" />
+                    <div>
+                        <label class="block text-sm font-medium mb-2" for="qs-url">LinkedIn Profile URL (Optional)</label>
+                        <InputText id="qs-url" v-model="linkedinUrl" placeholder="https://linkedin.com/in/yourprofile" class="w-full" />
                     </div>
                 </div>
             </template>
         </Card>
 
-        <!-- Game Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-6">
-            <Card v-for="entry in gameEntries" :key="entry.game.id" class="game-entry-card" :class="`status-${entry.status}`">
-                <template #title>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <i class="pi pi-trophy text-yellow-500"></i>
-                            {{ entry.game.name }}
-                        </div>
-                        <Tag :value="statusLabel(entry.status)" :severity="statusSeverity(entry.status)" />
-                    </div>
-                </template>
+        <!-- Drop Zone -->
+        <div
+            class="drop-zone mb-6"
+            :class="{ 'drop-zone--active': isDragging }"
+            @dragover.prevent="isDragging = true"
+            @dragleave="isDragging = false"
+            @drop.prevent="handleDrop"
+            @click="triggerFileInput"
+        >
+            <i class="pi pi-images text-5xl text-gray-300 mb-3"></i>
+            <p class="text-lg font-medium text-gray-600">Drop all your game screenshots here</p>
+            <p class="text-sm text-gray-400 mt-1">or click to browse · JPEG, PNG, GIF · Max 5MB each · Multiple files supported</p>
+            <input id="bulk-file-input" type="file" accept="image/jpeg,image/jpg,image/png,image/gif" multiple class="hidden" @change="handleFileSelect" />
+        </div>
+
+        <!-- Review List -->
+        <div v-if="uploads.length" class="space-y-3 mb-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-gray-800">
+                    Review &amp; Correct
+                    <span v-if="processingCount" class="text-sm font-normal text-blue-500 ml-2">
+                        <i class="pi pi-spin pi-spinner text-xs"></i> Scanning {{ processingCount }} image{{ processingCount !== 1 ? 's' : '' }}...
+                    </span>
+                </h2>
+                <div class="flex gap-3 text-sm text-gray-500">
+                    <span v-if="needsReviewCount" class="text-yellow-600 font-medium">⚠ {{ needsReviewCount }} need{{ needsReviewCount === 1 ? 's' : '' }} review</span>
+                    <span v-if="submittedCount" class="text-blue-600 font-medium">✓ {{ submittedCount }} submitted</span>
+                    <Button v-if="submittedCount" label="Clear submitted" size="small" text severity="secondary" @click="clearSubmitted" />
+                </div>
+            </div>
+
+            <!-- Upload Entry Card -->
+            <Card v-for="entry in uploads" :key="entry.id" class="entry-card" :class="`entry-${entry.status}`">
                 <template #content>
-                    <!-- Drop Zone / Image Preview -->
-                    <div v-if="!entry.imagePreview">
-                        <div
-                            class="drop-zone"
-                            :class="{ 'drop-zone--active': entry.isDragging }"
-                            @dragover.prevent="entry.isDragging = true"
-                            @dragleave="entry.isDragging = false"
-                            @drop.prevent="handleFileDrop(entry, $event)"
-                            @click="triggerFileInput(entry.game.id)"
-                        >
-                            <i class="pi pi-cloud-upload text-3xl text-gray-400 mb-2"></i>
-                            <p class="text-sm text-gray-500">Drop screenshot here or click to browse</p>
-                            <p class="text-xs text-gray-400 mt-1">JPEG, PNG, GIF · Max 5MB</p>
-                        </div>
-                        <input :id="`file-input-${entry.game.id}`" type="file" accept="image/jpeg,image/jpg,image/png,image/gif" class="hidden" @change="handleFileSelect(entry, $event)" />
-                    </div>
+                    <div class="flex gap-4 items-start">
 
-                    <div v-else class="mb-4">
-                        <div class="relative">
-                            <img :src="entry.imagePreview" alt="Score screenshot" class="w-full max-h-40 object-contain rounded border border-gray-200" />
-                            <Button
-                                icon="pi pi-times"
-                                size="small"
-                                severity="danger"
-                                rounded
-                                class="absolute top-1 right-1 !w-7 !h-7"
-                                @click="removeImage(entry)"
-                                aria-label="Remove image"
-                            />
-                        </div>
-                        <div v-if="entry.isParsingOCR" class="flex items-center gap-2 mt-2 text-sm text-blue-600">
-                            <i class="pi pi-spin pi-spinner"></i>
-                            Auto-detecting score...
-                        </div>
-                        <Button
-                            v-if="!entry.isParsingOCR && entry.status !== 'submitted'"
-                            icon="pi pi-search"
-                            label="Re-detect Score"
-                            size="small"
-                            severity="secondary"
-                            class="w-full mt-2"
-                            @click="autoDetectScore(entry)"
-                        />
-                    </div>
-
-                    <!-- Score Input -->
-                    <div v-if="entry.status !== 'submitted'" class="score-input-area">
-                        <!-- Guess-based game -->
-                        <div v-if="entry.game.scoringType === 1" class="space-y-2">
-                            <label class="block text-sm font-medium">Number of Guesses</label>
-                            <InputNumber
-                                v-model="entry.guessCount"
-                                placeholder="Guesses"
-                                class="w-full"
-                                :input-style="{ width: '100%' }"
-                                :min="1"
-                                :disabled="entry.ranOutOfGuesses"
-                                @input="onScoreInput(entry)"
-                            />
-                            <div class="flex items-center gap-2">
-                                <Checkbox :inputId="`dnf-${entry.game.id}`" v-model="entry.ranOutOfGuesses" :binary="true" @change="onScoreInput(entry)" />
-                                <label :for="`dnf-${entry.game.id}`" class="text-sm cursor-pointer">Did Not Finish (DNF)</label>
+                        <!-- Thumbnail -->
+                        <div class="thumbnail-col shrink-0">
+                            <div v-if="!entry.imagePreview" class="thumbnail-placeholder">
+                                <i class="pi pi-image text-gray-300 text-2xl"></i>
                             </div>
+                            <img v-else :src="entry.imagePreview" alt="Screenshot" class="thumbnail-img" />
                         </div>
 
-                        <!-- Time-based game -->
-                        <div v-else-if="entry.game.scoringType === 2">
-                            <label class="block text-sm font-medium mb-2">Completion Time</label>
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <InputNumber v-model="entry.minutes" placeholder="0" class="w-full" :input-style="{ width: '100%' }" :min="0" :max="99" @input="onScoreInput(entry)" />
-                                    <span class="text-xs text-gray-500 block text-center mt-1">Minutes</span>
+                        <!-- Main content -->
+                        <div class="flex-1 min-w-0">
+                            <!-- Top row: filename + status + remove -->
+                            <div class="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <Tag :severity="getStatusConfig(entry.status).severity">
+                                        <span class="flex items-center gap-1">
+                                            <i :class="`pi ${getStatusConfig(entry.status).icon} text-xs`"></i>
+                                            {{ getStatusConfig(entry.status).label }}
+                                        </span>
+                                    </Tag>
+                                    <span class="text-sm text-gray-500 truncate">{{ entry.file.name }}</span>
+                                    <span v-if="entry.scoreConfidence" :class="confidenceBadge(entry.scoreConfidence)?.class" class="text-xs">
+                                        · {{ confidenceBadge(entry.scoreConfidence)?.label }}
+                                    </span>
                                 </div>
-                                <div>
-                                    <InputNumber v-model="entry.seconds" placeholder="0" class="w-full" :input-style="{ width: '100%' }" :min="0" :max="59" @input="onScoreInput(entry)" />
-                                    <span class="text-xs text-gray-500 block text-center mt-1">Seconds</span>
+                                <div class="flex gap-2 shrink-0">
+                                    <Button
+                                        v-if="entry.status === 'needs-review' || entry.status === 'ready'"
+                                        icon="pi pi-refresh"
+                                        label="Re-scan"
+                                        size="small"
+                                        severity="secondary"
+                                        text
+                                        @click="rerunOcr(entry)"
+                                    />
+                                    <Button
+                                        v-if="entry.status !== 'submitted'"
+                                        icon="pi pi-times"
+                                        size="small"
+                                        severity="danger"
+                                        text
+                                        rounded
+                                        @click="removeUpload(entry)"
+                                        aria-label="Remove"
+                                    />
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <!-- Submitted state -->
-                    <div v-else class="flex items-center gap-2 py-4 justify-center text-green-600">
-                        <i class="pi pi-check-circle text-2xl"></i>
-                        <span class="font-medium">Score submitted!</span>
-                        <Button label="Reset" size="small" severity="secondary" text @click="resetEntry(entry)" />
+                            <!-- Processing state -->
+                            <div v-if="entry.status === 'processing'" class="flex items-center gap-2 text-sm text-blue-600 py-2">
+                                <i class="pi pi-spin pi-spinner"></i>
+                                Scanning image for game and score...
+                            </div>
+
+                            <!-- Queued state -->
+                            <div v-else-if="entry.status === 'queued'" class="text-sm text-gray-400 py-2">
+                                Waiting to scan...
+                            </div>
+
+                            <!-- Submitted state -->
+                            <div v-else-if="entry.status === 'submitted'" class="flex items-center gap-2 text-sm text-green-600 py-2">
+                                <i class="pi pi-check-circle"></i>
+                                Score submitted successfully for <strong>{{ entry.selectedGame?.name }}</strong>
+                            </div>
+
+                            <!-- Review / Ready / Error: show editable fields -->
+                            <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+
+                                <!-- Game selector -->
+                                <div>
+                                    <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Game</label>
+                                    <Select
+                                        v-model="entry.selectedGame"
+                                        :options="games"
+                                        optionLabel="name"
+                                        placeholder="Select game…"
+                                        class="w-full"
+                                        :class="{ 'p-invalid': !entry.selectedGame && entry.status === 'needs-review' }"
+                                        @change="onGameChange(entry)"
+                                    />
+                                    <small v-if="!entry.selectedGame" class="text-yellow-600 text-xs mt-1 block">
+                                        <i class="pi pi-exclamation-triangle text-xs"></i> Could not detect game — please select
+                                    </small>
+                                </div>
+
+                                <!-- Score inputs -->
+                                <div v-if="entry.selectedGame">
+                                    <!-- Guess-based -->
+                                    <div v-if="entry.selectedGame.scoringType === 1">
+                                        <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Guesses</label>
+                                        <InputNumber
+                                            v-model="entry.guessCount"
+                                            placeholder="Number of guesses"
+                                            class="w-full"
+                                            :input-style="{ width: '100%' }"
+                                            :min="1"
+                                            :disabled="entry.ranOutOfGuesses"
+                                            @input="onFieldChange(entry)"
+                                        />
+                                        <div class="flex items-center gap-2 mt-2">
+                                            <Checkbox :inputId="`dnf-${entry.id}`" v-model="entry.ranOutOfGuesses" :binary="true" @change="onFieldChange(entry)" />
+                                            <label :for="`dnf-${entry.id}`" class="text-sm cursor-pointer">Did Not Finish (DNF)</label>
+                                        </div>
+                                    </div>
+
+                                    <!-- Time-based -->
+                                    <div v-else-if="entry.selectedGame.scoringType === 2">
+                                        <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Completion Time</label>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <InputNumber v-model="entry.minutes" placeholder="0" class="w-full" :input-style="{ width: '100%' }" :min="0" :max="99" @input="onFieldChange(entry)" />
+                                                <span class="text-xs text-gray-400 block text-center mt-1">Minutes</span>
+                                            </div>
+                                            <div>
+                                                <InputNumber v-model="entry.seconds" placeholder="0" class="w-full" :input-style="{ width: '100%' }" :min="0" :max="59" @input="onFieldChange(entry)" />
+                                                <span class="text-xs text-gray-400 block text-center mt-1">Seconds</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div v-else class="flex items-end pb-1">
+                                    <p class="text-sm text-gray-400 italic">Select a game to enter the score</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </template>
             </Card>
         </div>
 
+        <!-- Empty state -->
+        <div v-else class="text-center py-12 text-gray-400">
+            <i class="pi pi-arrow-up text-4xl mb-3 block"></i>
+            <p class="text-lg">Drop your screenshots above to get started</p>
+        </div>
+
         <!-- Submit Bar -->
-        <Card class="submit-bar sticky-footer">
+        <Card v-if="uploads.length" class="submit-bar">
             <template #content>
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div class="flex items-center gap-4 text-sm text-gray-600">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div class="flex flex-wrap gap-4 text-sm">
                         <span>
-                            <strong class="text-green-600">{{ readyEntries.length }}</strong> ready to submit
+                            <strong :class="readyEntries.length ? 'text-green-600' : 'text-gray-400'">{{ readyEntries.length }}</strong>
+                            <span class="text-gray-500"> ready to submit</span>
                         </span>
-                        <span v-if="submittedCount">
-                            <strong class="text-blue-600">{{ submittedCount }}</strong> already submitted
+                        <span v-if="needsReviewCount" class="text-yellow-600">
+                            <strong>{{ needsReviewCount }}</strong> need{{ needsReviewCount === 1 ? 's' : '' }} review
+                        </span>
+                        <span v-if="processingCount" class="text-blue-500">
+                            <i class="pi pi-spin pi-spinner text-xs"></i> <strong>{{ processingCount }}</strong> scanning...
                         </span>
                     </div>
                     <Button
-                        :label="`Submit All (${readyEntries.length})`"
+                        :label="`Submit ${readyEntries.length} Score${readyEntries.length !== 1 ? 's' : ''}`"
                         icon="pi pi-send"
                         size="large"
                         class="px-8"
                         :loading="isSubmittingAll"
-                        :disabled="!readyEntries.length || !playerName"
+                        :disabled="!readyEntries.length || !playerName || isSubmittingAll"
                         @click="submitAll"
                     />
                 </div>
@@ -466,11 +598,11 @@ export default {
 
 <style scoped>
 .quick-submit-page {
-    @apply p-6 max-w-7xl mx-auto;
+    @apply p-6 max-w-5xl mx-auto;
 }
 
 .drop-zone {
-    @apply flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-8 cursor-pointer transition-colors;
+    @apply flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-12 cursor-pointer transition-all duration-200 bg-white;
 }
 
 .drop-zone:hover,
@@ -478,27 +610,41 @@ export default {
     @apply border-blue-400 bg-blue-50;
 }
 
-.score-input-area {
-    @apply mt-3;
+/* Entry cards */
+.entry-card {
+    @apply border border-gray-200 transition-all duration-200;
 }
 
-.game-entry-card {
-    @apply transition-all duration-200 overflow-hidden;
+.entry-needs-review {
+    @apply border-yellow-300 bg-yellow-50/30;
 }
 
-.game-entry-card.status-ready {
-    @apply ring-2 ring-green-300;
+.entry-ready {
+    @apply border-green-300;
 }
 
-.game-entry-card.status-submitted {
-    @apply ring-2 ring-blue-300 opacity-80;
+.entry-submitted {
+    @apply border-blue-200 opacity-70;
 }
 
-.game-entry-card.status-error {
-    @apply ring-2 ring-red-300;
+.entry-error {
+    @apply border-red-300 bg-red-50/30;
+}
+
+/* Thumbnail */
+.thumbnail-col {
+    @apply w-20;
+}
+
+.thumbnail-img {
+    @apply w-20 h-20 object-cover rounded-lg border border-gray-200;
+}
+
+.thumbnail-placeholder {
+    @apply w-20 h-20 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50;
 }
 
 .submit-bar {
-    @apply border border-gray-200;
+    @apply border border-gray-200 sticky bottom-4 shadow-lg;
 }
 </style>
