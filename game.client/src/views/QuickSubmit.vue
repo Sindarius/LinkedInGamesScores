@@ -555,13 +555,13 @@ export default {
                                     <div v-if="entry.selectedGame.scoringType === 1">
                                         <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Guesses</label>
                                         <InputNumber
-                                            v-model="entry.guessCount"
+                                            :model-value="entry.guessCount"
                                             placeholder="Number of guesses"
                                             class="w-full"
                                             :input-style="{ width: '100%' }"
                                             :min="1"
                                             :disabled="entry.ranOutOfGuesses"
-                                            @input="onFieldChange(entry)"
+                                            @update:model-value="(val) => { entry.guessCount = val; onFieldChange(entry); }"
                                         />
                                         <div class="flex items-center gap-2 mt-2">
                                             <Checkbox :inputId="`dnf-${entry.id}`" v-model="entry.ranOutOfGuesses" :binary="true" @change="onFieldChange(entry)" />
@@ -574,11 +574,27 @@ export default {
                                         <label class="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">Completion Time</label>
                                         <div class="grid grid-cols-2 gap-2">
                                             <div>
-                                                <InputNumber v-model="entry.minutes" placeholder="0" class="w-full" :input-style="{ width: '100%' }" :min="0" :max="99" @input="onFieldChange(entry)" />
+                                                <InputNumber
+                                                    :model-value="entry.minutes"
+                                                    placeholder="0"
+                                                    class="w-full"
+                                                    :input-style="{ width: '100%' }"
+                                                    :min="0"
+                                                    :max="99"
+                                                    @update:model-value="(val) => { entry.minutes = val; onFieldChange(entry); }"
+                                                />
                                                 <span class="text-xs text-gray-400 block text-center mt-1">Minutes</span>
                                             </div>
                                             <div>
-                                                <InputNumber v-model="entry.seconds" placeholder="0" class="w-full" :input-style="{ width: '100%' }" :min="0" :max="59" @input="onFieldChange(entry)" />
+                                                <InputNumber
+                                                    :model-value="entry.seconds"
+                                                    placeholder="0"
+                                                    class="w-full"
+                                                    :input-style="{ width: '100%' }"
+                                                    :min="0"
+                                                    :max="59"
+                                                    @update:model-value="(val) => { entry.seconds = val; onFieldChange(entry); }"
+                                                />
                                                 <span class="text-xs text-gray-400 block text-center mt-1">Seconds</span>
                                             </div>
                                         </div>
