@@ -463,10 +463,10 @@ export default {
             <!-- Upload Entry Card -->
             <Card v-for="entry in uploads" :key="entry.id" class="entry-card" :class="`entry-${entry.status}`">
                 <template #content>
-                    <div class="flex gap-4 items-start">
+                    <div class="flex flex-col sm:flex-row gap-4 items-start">
 
-                        <!-- Thumbnail -->
-                        <div class="thumbnail-col shrink-0">
+                        <!-- Thumbnail: full-width on mobile, fixed sidebar on sm+ -->
+                        <div class="thumbnail-col w-full sm:w-24 shrink-0">
                             <div v-if="!entry.imagePreview" class="thumbnail-placeholder">
                                 <i class="pi pi-image text-gray-300 text-2xl"></i>
                             </div>
@@ -692,16 +692,12 @@ export default {
 }
 
 /* Thumbnail */
-.thumbnail-col {
-    @apply w-20;
-}
-
 .thumbnail-img {
-    @apply w-20 h-20 object-cover rounded-lg border border-gray-200;
+    @apply w-full max-h-64 sm:w-24 sm:h-24 sm:max-h-none object-contain sm:object-cover rounded-lg border border-gray-200 bg-gray-50;
 }
 
 .thumbnail-placeholder {
-    @apply w-20 h-20 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50;
+    @apply w-full h-24 sm:w-24 rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center bg-gray-50;
 }
 
 .submit-bar {
