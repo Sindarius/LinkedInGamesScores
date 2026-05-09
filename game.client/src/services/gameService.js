@@ -230,6 +230,29 @@ export class GameService {
         return data;
     }
 
+    async getStreaks(date = null) {
+        let url = `${API_BASE_URL}/stats/streaks`;
+        if (date) {
+            const d = new Date(date);
+            const iso = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+            url += `?date=${iso}`;
+        }
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to fetch streaks');
+        return await response.json();
+    }
+
+    async getPlayerStats(playerName, linkedInUrl = null) {
+        let url = `${API_BASE_URL}/stats/player?playerName=${encodeURIComponent(playerName)}`;
+        if (linkedInUrl) url += `&linkedInUrl=${encodeURIComponent(linkedInUrl)}`;
+        const response = await fetch(url);
+        if (!response.ok) {
+            if (response.status === 404) return null;
+            throw new Error('Failed to fetch player stats');
+        }
+        return await response.json();
+    }
+
     // Clear all caches (call when new scores are submitted or when data needs refresh)
     clearAllCaches() {
         this.playerTemperatureCache.clear();

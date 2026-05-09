@@ -27,6 +27,11 @@ const router = createRouter({
                     path: '/ocr-training',
                     name: 'ocrtraining',
                     component: () => import('@/views/OCRTraining.vue')
+                },
+                {
+                    path: '/player/:name',
+                    name: 'playerstats',
+                    component: () => import('@/views/PlayerStats.vue')
                 }
             ]
         },

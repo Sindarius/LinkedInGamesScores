@@ -154,7 +154,10 @@ export default {
                                 <div v-if="champion.champions.length === 1" class="flex items-center space-x-2">
                                     <Avatar :label="champion.champions[0].playerName.charAt(0).toUpperCase()" size="small" />
                                     <div>
-                                        <span class="font-medium text-color">{{ champion.champions[0].playerName }}</span>
+                                        <RouterLink
+                                            :to="{ name: 'playerstats', params: { name: champion.champions[0].playerName }, query: champion.champions[0].linkedInProfileUrl ? { linkedIn: champion.champions[0].linkedInProfileUrl } : {} }"
+                                            class="font-medium text-color hover:underline"
+                                        >{{ champion.champions[0].playerName }}</RouterLink>
                                         <div v-if="champion.champions[0].linkedInProfileUrl" class="text-xs text-blue-600">
                                             <a :href="champion.champions[0].linkedInProfileUrl" target="_blank" class="hover:underline"> LinkedIn Profile </a>
                                         </div>
@@ -167,7 +170,10 @@ export default {
                                     <div class="flex flex-wrap gap-2">
                                         <div v-for="(player, index) in champion.champions" :key="player.id" class="flex items-center space-x-1 bg-surface-100 dark:bg-surface-700 rounded-full px-2 py-1">
                                             <Avatar :label="player.playerName.charAt(0).toUpperCase()" size="small" />
-                                            <span class="text-sm font-medium text-color">{{ player.playerName }}</span>
+                                            <RouterLink
+                                                :to="{ name: 'playerstats', params: { name: player.playerName }, query: player.linkedInProfileUrl ? { linkedIn: player.linkedInProfileUrl } : {} }"
+                                                class="text-sm font-medium text-color hover:underline"
+                                            >{{ player.playerName }}</RouterLink>
                                         </div>
                                     </div>
                                 </div>

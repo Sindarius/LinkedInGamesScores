@@ -99,7 +99,7 @@ export default {
                                         <Badge :value="index + 1" :severity="index === 0 ? 'info' : 'secondary'" />
                                     </div>
                                     <div>
-                                        <div class="font-medium text-surface-900 dark:text-surface-0">{{ player.playerName }}</div>
+                                        <RouterLink :to="{ name: 'playerstats', params: { name: player.playerName } }" class="font-medium text-surface-900 dark:text-surface-0 hover:underline">{{ player.playerName }}</RouterLink>
                                         <div class="text-xs text-muted-color">{{ player.scoreCount }} scores | Best: {{ formatScore(player.bestScore, game.scoringType) }}</div>
                                     </div>
                                 </div>
