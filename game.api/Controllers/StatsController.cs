@@ -255,7 +255,7 @@ namespace game.api.Controllers
                 double rankSum = 0;
                 double scoreSum = 0;
                 double? bestScore = null;
-                bool neverDnf = true;
+                bool neverDnf = game.ScoringType == ScoringType.Guesses;
                 var rankHistory = new List<RankHistoryEntryDto>();
 
                 foreach (var (date, score) in byDay)
@@ -348,7 +348,7 @@ namespace game.api.Controllers
                 achievements.Add($"🔥 {currentStreak}-day streak");
             if (bestStreak >= 14)
                 achievements.Add($"🏆 Best streak: {bestStreak} days");
-            foreach (var gs in gameStatsList.Where(g => g.NeverDnf && g.TotalGames >= 3))
+            foreach (var gs in gameStatsList.Where(g => g.NeverDnf && g.TotalGames >= 3 && g.ScoringType == ScoringType.Guesses))
                 achievements.Add($"💯 Never DNF'd in {gs.GameName}");
             foreach (var gs in gameStatsList.Where(g => g.WinRate >= 50 && g.TotalGames >= 5))
                 achievements.Add($"👑 {gs.WinRate:F0}% win rate in {gs.GameName}");
