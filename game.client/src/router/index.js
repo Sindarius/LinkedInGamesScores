@@ -29,6 +29,11 @@ const router = createRouter({
                     component: () => import('@/views/OCRTraining.vue')
                 },
                 {
+                    path: '/players',
+                    name: 'players',
+                    component: () => import('@/views/PlayersList.vue')
+                },
+                {
                     path: '/player/:name',
                     name: 'playerstats',
                     component: () => import('@/views/PlayerStats.vue')

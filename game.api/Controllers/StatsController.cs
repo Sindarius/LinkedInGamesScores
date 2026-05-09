@@ -104,6 +104,132 @@ namespace game.api.Controllers
             return Ok(result);
         }
 
+        // GET api/stats/players?days=30
+        [HttpGet("players")]
+        public async Task<ActionResult<IEnumerable<PlayerSummaryDto>>> GetPlayers([FromQuery] int days = 30)
+        {
+            days = Math.Clamp(days, 1, 365);
+            var tz = TimeZoneHelper.GetPacificTimeZone();
+            var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz).Date;
+            var (utcStart, _, _, _) = TimeZoneHelper.GetRecentPacificWindows(days);
+
+            var games = await _context.Games.AsNoTracking().Where(g => g.IsActive).ToListAsync();
+
+            // Recent scores for activity window
+            var recentScores = await _context.GameScores
+                .AsNoTracking()
+                .Include(s => s.Game)
+                .Where(s => s.DateAchieved >= utcStart)
+                .ToListAsync();
+
+            // Identify unique players from the window
+            var identities = recentScores
+                .GroupBy(s => string.IsNullOrWhiteSpace(s.LinkedInProfileUrl)
+                    ? s.PlayerName.Trim().ToLowerInvariant()
+                    : s.LinkedInProfileUrl!.Trim().ToLowerInvariant())
+                .Select(g => g.First())
+                .ToList();
+
+            if (identities.Count == 0)
+                return Ok(new List<PlayerSummaryDto>());
+
+            // Load all historical scores for streak computation
+            var linkedInUrls = identities.Where(p => !string.IsNullOrWhiteSpace(p.LinkedInProfileUrl))
+                .Select(p => p.LinkedInProfileUrl!.Trim().ToLowerInvariant()).ToList();
+            var playerNames = identities.Where(p => string.IsNullOrWhiteSpace(p.LinkedInProfileUrl))
+                .Select(p => p.PlayerName.Trim().ToLowerInvariant()).ToList();
+
+            var allHistorical = await _context.GameScores
+                .AsNoTracking()
+                .Where(s =>
+                    (s.LinkedInProfileUrl != null && linkedInUrls.Contains(s.LinkedInProfileUrl.ToLower())) ||
+                    (string.IsNullOrWhiteSpace(s.LinkedInProfileUrl) && playerNames.Contains(s.PlayerName.ToLower())))
+                .Select(s => new { s.LinkedInProfileUrl, s.PlayerName, s.DateAchieved })
+                .ToListAsync();
+
+            var result = new List<PlayerSummaryDto>();
+
+            foreach (var identity in identities)
+            {
+                var hasUrl = !string.IsNullOrWhiteSpace(identity.LinkedInProfileUrl);
+                var key = hasUrl
+                    ? identity.LinkedInProfileUrl!.Trim().ToLowerInvariant()
+                    : identity.PlayerName.Trim().ToLowerInvariant();
+
+                var myRecent = recentScores.Where(s => hasUrl
+                    ? s.LinkedInProfileUrl?.Trim().ToLowerInvariant() == key
+                    : string.IsNullOrWhiteSpace(s.LinkedInProfileUrl) && s.PlayerName.Trim().ToLowerInvariant() == key)
+                    .ToList();
+
+                // Distinct game+date combos = games played
+                var totalGames = myRecent
+                    .GroupBy(s => new { s.GameId, Date = TimeZoneInfo.ConvertTimeFromUtc(s.DateAchieved, tz).Date })
+                    .Count();
+
+                // Wins: count days where player had the best score per game
+                int wins = 0;
+                foreach (var group in myRecent.GroupBy(s => new { s.GameId, Date = TimeZoneInfo.ConvertTimeFromUtc(s.DateAchieved, tz).Date }))
+                {
+                    var game = games.FirstOrDefault(g => g.Id == group.Key.GameId);
+                    if (game == null) continue;
+
+                    var dayAll = recentScores
+                        .Where(s => s.GameId == group.Key.GameId &&
+                                    TimeZoneInfo.ConvertTimeFromUtc(s.DateAchieved, tz).Date == group.Key.Date)
+                        .ToList();
+
+                    var playerBest = group.First();
+                    bool isWin;
+                    if (game.ScoringType == ScoringType.Time)
+                    {
+                        var myBest = group.Where(s => s.CompletionTime.HasValue).OrderBy(s => s.CompletionTime!.Value).FirstOrDefault();
+                        if (myBest?.CompletionTime == null) continue;
+                        var dayBest = dayAll.Where(s => s.CompletionTime.HasValue).Min(s => s.CompletionTime!.Value);
+                        isWin = myBest.CompletionTime.Value == dayBest;
+                    }
+                    else
+                    {
+                        var myBest = group.Where(s => s.GuessCount.HasValue).OrderBy(s => s.GuessCount!.Value).FirstOrDefault();
+                        if (myBest?.GuessCount == null) continue;
+                        var dayBest = dayAll.Where(s => s.GuessCount.HasValue).Min(s => s.GuessCount!.Value);
+                        isWin = myBest.GuessCount.Value == dayBest;
+                    }
+                    if (isWin) wins++;
+                }
+
+                // Streak from all-time history
+                var distinctDates = allHistorical
+                    .Where(s => hasUrl
+                        ? s.LinkedInProfileUrl?.Trim().ToLowerInvariant() == key
+                        : string.IsNullOrWhiteSpace(s.LinkedInProfileUrl) && s.PlayerName.Trim().ToLowerInvariant() == key)
+                    .Select(s => TimeZoneInfo.ConvertTimeFromUtc(s.DateAchieved, tz).Date)
+                    .Distinct()
+                    .OrderByDescending(d => d)
+                    .ToList();
+
+                var (currentStreak, _) = ComputeStreaks(distinctDates, today);
+
+                var gameNames = myRecent
+                    .Where(s => s.Game != null)
+                    .Select(s => s.Game!.Name)
+                    .Distinct()
+                    .OrderBy(n => n)
+                    .ToList();
+
+                result.Add(new PlayerSummaryDto
+                {
+                    PlayerName = identity.PlayerName,
+                    LinkedInProfileUrl = identity.LinkedInProfileUrl,
+                    TotalGames = totalGames,
+                    Wins = wins,
+                    CurrentStreak = currentStreak,
+                    GameNames = gameNames
+                });
+            }
+
+            return Ok(result.OrderByDescending(p => p.Wins).ThenBy(p => p.PlayerName));
+        }
+
         // GET api/stats/streaks?date=2026-05-09
         [HttpGet("streaks")]
         public async Task<ActionResult<Dictionary<string, PlayerStreakDto>>> GetStreaks([FromQuery] DateTime? date = null)

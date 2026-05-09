@@ -230,6 +230,12 @@ export class GameService {
         return data;
     }
 
+    async getPlayers(days = 30) {
+        const response = await fetch(`${API_BASE_URL}/stats/players?days=${days}`);
+        if (!response.ok) throw new Error('Failed to fetch players');
+        return await response.json();
+    }
+
     async getStreaks(date = null) {
         let url = `${API_BASE_URL}/stats/streaks`;
         if (date) {

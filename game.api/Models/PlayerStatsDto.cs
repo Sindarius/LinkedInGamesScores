@@ -45,6 +45,16 @@ namespace game.api.Models
         public List<RankHistoryEntryDto> RankHistory { get; set; } = new();
     }
 
+    public class PlayerSummaryDto
+    {
+        public string PlayerName { get; set; } = string.Empty;
+        public string? LinkedInProfileUrl { get; set; }
+        public int TotalGames { get; set; }
+        public int Wins { get; set; }
+        public int CurrentStreak { get; set; }
+        public List<string> GameNames { get; set; } = new();
+    }
+
     public class PlayerStatsDto
     {
         public string PlayerName { get; set; } = string.Empty;
