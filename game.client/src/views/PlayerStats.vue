@@ -34,11 +34,6 @@ export default {
             const gs = this.selectedGameStats;
             if (!gs) return [];
             return gs.rankHistory;
-        },
-        maxRankInHistory() {
-            const entries = this.rankHistoryForChart.filter((e) => e.rank !== null);
-            if (!entries.length) return 5;
-            return Math.max(...entries.map((e) => e.rank), 3);
         }
     },
     async mounted() {
@@ -58,10 +53,12 @@ export default {
         }
     },
     methods: {
-        barHeight(rank) {
-            if (rank === null) return 0;
-            const max = this.maxRankInHistory;
-            return Math.round(Math.max(10, ((max - rank + 1) / max) * 100));
+        barHeightPx(rank) {
+            if (rank === null) return 3;
+            if (rank === 1) return 56;
+            if (rank === 2) return 42;
+            if (rank === 3) return 28;
+            return 14; // 4th or worse
         },
         formatScore(result) {
             if (result.isDnf) return 'DNF';
@@ -218,16 +215,14 @@ export default {
                     <div v-if="selectedGameStats">
                         <div class="chart-bars">
                             <div v-for="(entry, i) in rankHistoryForChart" :key="i" class="chart-col">
-                                <div class="bar-label-top" v-if="entry.rank">
-                                    <span class="rank-dot" :style="{ background: rankColor(entry.rank) }">#{{ entry.rank }}</span>
-                                </div>
-                                <div class="bar-wrapper">
-                                    <div
-                                        class="bar"
-                                        :class="{ 'bar-empty': entry.rank === null, 'bar-first': entry.rank === 1 }"
-                                        :style="{ height: barHeight(entry.rank) + '%' }"
-                                    ></div>
-                                </div>
+                                <span v-if="entry.rank" class="rank-dot" :style="{ background: rankColor(entry.rank) }">#{{ entry.rank }}</span>
+                                <span v-else class="rank-dot-empty"></span>
+                                <div style="flex: 1"></div>
+                                <div
+                                    class="bar"
+                                    :class="{ 'bar-empty': entry.rank === null, 'bar-first': entry.rank === 1 }"
+                                    :style="{ height: barHeightPx(entry.rank) + 'px' }"
+                                ></div>
                                 <div class="bar-date">{{ rankLabel(i) }}</div>
                             </div>
                         </div>
@@ -334,11 +329,9 @@ export default {
 
 .chart-bars {
     display: flex;
-    align-items: flex-end;
     gap: 4px;
     height: 90px;
-    padding-top: 20px;
-    position: relative;
+    align-items: stretch;
 }
 
 .chart-col {
@@ -346,16 +339,7 @@ export default {
     display: flex;
     flex-direction: column;
     align-items: center;
-    height: 100%;
-    position: relative;
-}
-
-.bar-label-top {
-    position: absolute;
-    top: -18px;
-    width: 100%;
-    display: flex;
-    justify-content: center;
+    min-width: 0;
 }
 
 .rank-dot {
@@ -365,25 +349,26 @@ export default {
     padding: 1px 3px;
     border-radius: 3px;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
-.bar-wrapper {
-    flex: 1;
-    width: 100%;
-    display: flex;
-    align-items: flex-end;
+.rank-dot-empty {
+    display: inline-block;
+    height: 14px;
+    flex-shrink: 0;
 }
 
 .bar {
     width: 100%;
     border-radius: 3px 3px 0 0;
     background: linear-gradient(180deg, #818cf8, #6366f1);
-    min-height: 4px;
+    flex-shrink: 0;
     transition: height 0.3s ease;
 }
 
 .bar.bar-empty {
     background: rgba(99, 102, 241, 0.15);
+    border-radius: 2px;
 }
 
 .bar.bar-first {
@@ -395,6 +380,7 @@ export default {
     color: var(--p-text-muted-color, #94a3b8);
     margin-top: 3px;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .result-row {
