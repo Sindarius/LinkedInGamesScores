@@ -156,3 +156,5 @@ pids
 # Yarn Integrity file
 .yarn-integrity
 data/
+
+.claude/
