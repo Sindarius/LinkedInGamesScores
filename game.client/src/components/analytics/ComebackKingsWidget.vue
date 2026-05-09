@@ -91,7 +91,7 @@ export default {
                                         <Badge :value="index + 1" :severity="index === 0 ? 'success' : 'info'" />
                                     </div>
                                     <div>
-                                        <div class="font-medium text-surface-900 dark:text-surface-0">{{ player.playerName }}</div>
+                                        <RouterLink :to="{ name: 'playerstats', params: { name: player.playerName } }" class="font-medium text-surface-900 dark:text-surface-0 hover:underline">{{ player.playerName }}</RouterLink>
                                         <div class="text-xs text-muted-color">{{ player.totalImprovements }} improvement{{ player.totalImprovements !== 1 ? 's' : '' }} ({{ player.recentScoresCount }} scores)</div>
                                     </div>
                                 </div>

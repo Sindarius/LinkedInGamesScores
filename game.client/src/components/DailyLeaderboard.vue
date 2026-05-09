@@ -40,6 +40,7 @@ export default {
             },
             isMobile: false,
             scoreInsights: {},
+            streaks: {},
             cachedScoresByDate: {},
             cachedAllScores: {}
         };
@@ -103,21 +104,15 @@ export default {
             this.isLoading = true;
 
             try {
-                if (this.gameId) {
-                    this.scores = await this.gameService.getLeaderboard(this.gameId, this.selectedDate, 10);
-                } else {
-                    // Load all games leaderboard for selected date
-                    const games = await this.gameService.getGames();
-                    let allScores = [];
+                const [scores, streaks] = await Promise.all([
+                    this.gameId
+                        ? this.gameService.getLeaderboard(this.gameId, this.selectedDate, 10)
+                        : this.loadAllGamesScores(),
+                    this.gameService.getStreaks(this.selectedDate).catch(() => ({}))
+                ]);
 
-                    for (const game of games) {
-                        const gameScores = await this.gameService.getLeaderboard(game.id, this.selectedDate, 10);
-                        allScores = [...allScores, ...gameScores];
-                    }
-
-                    this.scores = allScores.sort((a, b) => b.score - a.score).slice(0, 10);
-                }
-
+                this.scores = scores;
+                this.streaks = streaks;
                 await this.buildScoreInsights(this.scores);
             } catch (error) {
                 console.error('Error loading leaderboard:', error);
@@ -130,6 +125,26 @@ export default {
             } finally {
                 this.isLoading = false;
             }
+        },
+        async loadAllGamesScores() {
+            const games = await this.gameService.getGames();
+            let allScores = [];
+            for (const game of games) {
+                const gameScores = await this.gameService.getLeaderboard(game.id, this.selectedDate, 10);
+                allScores = [...allScores, ...gameScores];
+            }
+            return allScores.sort((a, b) => b.score - a.score).slice(0, 10);
+        },
+        getStreak(score) {
+            const key = (score.linkedInProfileUrl || score.playerName || '').trim().toLowerCase();
+            return this.streaks[key] || { currentStreak: 0, bestStreak: 0 };
+        },
+        playerStatsRoute(score) {
+            return {
+                name: 'playerstats',
+                params: { name: score.playerName },
+                query: score.linkedInProfileUrl ? { linkedIn: score.linkedInProfileUrl } : {}
+            };
         },
         formatDate(date) {
             return new Date(date).toLocaleDateString('en-US', {
@@ -755,7 +770,12 @@ export default {
                                     <div class="flex items-center">
                                         <Avatar :label="data.playerName.charAt(0).toUpperCase()" class="mr-2" size="small" />
                                         <div>
-                                            <div class="font-medium">{{ data.playerName }}</div>
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <RouterLink :to="playerStatsRoute(data)" class="font-medium hover:underline">{{ data.playerName }}</RouterLink>
+                                                <span v-if="getStreak(data).currentStreak >= 2" class="streak-badge">
+                                                    🔥 {{ getStreak(data).currentStreak }}
+                                                </span>
+                                            </div>
                                             <div v-if="data.linkedInProfileUrl" class="text-xs text-blue-600">
                                                 <a :href="data.linkedInProfileUrl" target="_blank" class="hover:underline"> LinkedIn Profile </a>
                                             </div>
@@ -864,5 +884,18 @@ export default {
 
 .share-button :deep(.p-button) {
     @apply px-3 py-1;
+}
+
+.streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    padding: 1px 7px;
+    border-radius: 9999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #ef4444, #f97316);
+    color: #fff;
+    white-space: nowrap;
 }
 </style>

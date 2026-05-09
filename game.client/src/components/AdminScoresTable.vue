@@ -237,7 +237,10 @@ const formatDate = (dateString) => {
 
             <Column field="playerName" header="Player" style="min-width: 150px">
                 <template #body="{ data }">
-                    {{ data.playerName }}
+                    <RouterLink
+                        :to="{ name: 'playerstats', params: { name: data.playerName }, query: data.linkedInProfileUrl ? { linkedIn: data.linkedInProfileUrl } : {} }"
+                        class="hover:underline"
+                    >{{ data.playerName }}</RouterLink>
                 </template>
                 <template #editor="{ data, field }">
                     <InputText v-model="data[field]" />
