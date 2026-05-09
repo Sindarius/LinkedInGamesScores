@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { AdminService } from '@/services/adminService';
 
@@ -14,6 +14,12 @@ const newScoreDialog = ref(false);
 const deleteScoreDialog = ref(false);
 const selectedScore = ref(null);
 const newScoreTimeInput = ref('');
+const selectedGameFilter = ref(null);
+
+const filteredScores = computed(() => {
+    if (!selectedGameFilter.value) return scores.value;
+    return scores.value.filter((s) => s.gameId === selectedGameFilter.value);
+});
 
 const newScore = ref({
     gameId: null,
@@ -219,14 +225,30 @@ const formatDate = (dateString) => {
             <Button label="Add Score" icon="pi pi-plus" class="px-4 py-2" @click="openNewScoreDialog" />
         </div>
 
-        <DataTable v-model:editingRows="editingRows" :value="scores" editMode="row" dataKey="id" @row-edit-save="onRowEditSave" @row-edit-cancel="onRowEditCancel" :loading="loading" :paginator="true" :rows="20" class="p-datatable-gridlines">
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 mb-4 items-center">
+            <Select
+                v-model="selectedGameFilter"
+                :options="[{ id: null, name: 'All games' }, ...games]"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Filter by game"
+                class="w-48"
+            />
+            <span v-if="selectedGameFilter" class="text-sm text-muted-color">
+                {{ filteredScores.length }} scores
+            </span>
+            <Button v-if="selectedGameFilter" label="Clear" icon="pi pi-times" size="small" text @click="selectedGameFilter = null" />
+        </div>
+
+        <DataTable v-model:editingRows="editingRows" :value="filteredScores" editMode="row" dataKey="id" @row-edit-save="onRowEditSave" @row-edit-cancel="onRowEditCancel" :loading="loading" :paginator="true" :rows="20" class="p-datatable-gridlines" sortField="dateAchieved" :sortOrder="-1">
             <Column field="id" header="ID" style="width: 80px">
                 <template #body="{ data }">
                     {{ data.id }}
                 </template>
             </Column>
 
-            <Column field="gameName" header="Game" style="min-width: 120px">
+            <Column field="gameName" header="Game" style="min-width: 120px" sortable>
                 <template #body="{ data }">
                     {{ data.gameName }}
                 </template>
@@ -235,7 +257,7 @@ const formatDate = (dateString) => {
                 </template>
             </Column>
 
-            <Column field="playerName" header="Player" style="min-width: 150px">
+            <Column field="playerName" header="Player" style="min-width: 150px" sortable>
                 <template #body="{ data }">
                     <RouterLink
                         :to="{ name: 'playerstats', params: { name: data.playerName }, query: data.linkedInProfileUrl ? { linkedIn: data.linkedInProfileUrl } : {} }"
@@ -271,7 +293,7 @@ const formatDate = (dateString) => {
                 </template>
             </Column>
 
-            <Column field="dateAchieved" header="Date" style="width: 120px">
+            <Column field="dateAchieved" header="Date" style="width: 120px" sortable>
                 <template #body="{ data }">
                     {{ formatDate(data.dateAchieved) }}
                 </template>
