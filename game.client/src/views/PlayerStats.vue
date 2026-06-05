@@ -213,6 +213,7 @@ export default {
                 </template>
                 <template #content>
                     <div v-if="selectedGameStats">
+                        <div class="chart-scroll">
                         <div class="chart-bars">
                             <div v-for="(entry, i) in rankHistoryForChart" :key="i" class="chart-col">
                                 <span v-if="entry.rank" class="rank-dot" :style="{ background: rankColor(entry.rank) }">#{{ entry.rank }}</span>
@@ -225,6 +226,7 @@ export default {
                                 ></div>
                                 <div class="bar-date">{{ rankLabel(i) }}</div>
                             </div>
+                        </div>
                         </div>
                         <div class="flex justify-between text-xs text-muted-color mt-1 px-1">
                             <span>Better ↑</span>
@@ -327,11 +329,17 @@ export default {
     color: #818cf8;
 }
 
+.chart-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
 .chart-bars {
     display: flex;
     gap: 4px;
     height: 90px;
     align-items: stretch;
+    min-width: 420px;
 }
 
 .chart-col {

@@ -247,7 +247,7 @@ namespace game.api.Controllers
                 GuessCount = dto.GuessCount,
                 CompletionTime = dto.CompletionTime,
                 LinkedInProfileUrl = dto.LinkedInProfileUrl,
-                DateAchieved = DateTime.UtcNow
+                DateAchieved = dto.DateAchieved.HasValue ? dto.DateAchieved.Value : DateTime.UtcNow
             };
 
             _context.GameScores.Add(gameScore);
@@ -369,7 +369,7 @@ namespace game.api.Controllers
         [HttpPost]
         public async Task<ActionResult<GameScore>> PostGameScore(GameScore gameScore)
         {
-            gameScore.DateAchieved = DateTime.UtcNow;
+            gameScore.DateAchieved = gameScore.DateAchieved == default ? DateTime.UtcNow : gameScore.DateAchieved;
             _context.GameScores.Add(gameScore);
             await _context.SaveChangesAsync();
 

@@ -9,6 +9,7 @@ const adminService = new AdminService();
 const model = computed(() => {
     const menuItems = [
         { label: 'Game Scores', icon: 'pi pi-fw pi-trophy', to: '/' },
+        { label: 'Players', icon: 'pi pi-fw pi-users', to: '/players' },
         { label: 'Quick Submit', icon: 'pi pi-fw pi-bolt', to: '/quick-submit' },
         { label: 'Admin Panel', icon: 'pi pi-fw pi-cog', to: '/admin' }
     ];

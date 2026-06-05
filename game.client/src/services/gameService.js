@@ -68,12 +68,14 @@ export class GameService {
     }
 
     async submitScore(gameScore) {
+        const payload = { ...gameScore };
+        if (!payload.dateAchieved) delete payload.dateAchieved; // let server default to now
         const response = await fetch(`${API_BASE_URL}/gamescores`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(gameScore)
+            body: JSON.stringify(payload)
         });
 
         if (!response.ok) {
@@ -97,6 +99,10 @@ export class GameService {
 
         if (gameScoreData.linkedInProfileUrl) {
             formData.append('LinkedInProfileUrl', gameScoreData.linkedInProfileUrl);
+        }
+
+        if (gameScoreData.dateAchieved) {
+            formData.append('DateAchieved', gameScoreData.dateAchieved);
         }
 
         if (imageFile) {
@@ -228,6 +234,12 @@ export class GameService {
         });
 
         return data;
+    }
+
+    async getPlayers(days = 30) {
+        const response = await fetch(`${API_BASE_URL}/stats/players?days=${days}`);
+        if (!response.ok) throw new Error('Failed to fetch players');
+        return await response.json();
     }
 
     async getStreaks(date = null) {
