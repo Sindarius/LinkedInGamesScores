@@ -22,6 +22,12 @@ export default {
         const isSubmittingAll = ref(false);
         const isDragging = ref(false);
         const isProcessingOCR = ref(false); // true while any OCR is running
+        const submissionDate = ref(new Date());
+
+        const toUtcNoon = (date) => {
+            const d = new Date(date);
+            return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0)).toISOString();
+        };
 
         const playerName = computed({
             get: () => playerStore.playerName,
@@ -323,7 +329,8 @@ export default {
             const gameScore = {
                 gameId: entry.selectedGame.id,
                 playerName: playerName.value,
-                linkedInProfileUrl: linkedinUrl.value || null
+                linkedInProfileUrl: linkedinUrl.value || null,
+                dateAchieved: toUtcNoon(submissionDate.value)
             };
 
             if (entry.selectedGame.scoringType === 1) {
@@ -376,6 +383,7 @@ export default {
             uploads,
             playerName,
             linkedinUrl,
+            submissionDate,
             isSubmittingAll,
             isDragging,
             readyEntries,
@@ -416,7 +424,7 @@ export default {
                 </div>
             </template>
             <template #content>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-2" for="qs-name">Player Name <span class="text-red-500">*</span></label>
                         <InputText id="qs-name" v-model="playerName" placeholder="Enter your name" class="w-full" />
@@ -424,6 +432,10 @@ export default {
                     <div>
                         <label class="block text-sm font-medium mb-2" for="qs-url">LinkedIn Profile URL (Optional)</label>
                         <InputText id="qs-url" v-model="linkedinUrl" placeholder="https://linkedin.com/in/yourprofile" class="w-full" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2" for="qs-date">Date Played</label>
+                        <DatePicker id="qs-date" v-model="submissionDate" :maxDate="new Date()" showIcon class="w-full" dateFormat="yy-mm-dd" />
                     </div>
                 </div>
             </template>

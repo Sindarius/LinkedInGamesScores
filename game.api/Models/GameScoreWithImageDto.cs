@@ -8,5 +8,6 @@ namespace game.api.Models
         public TimeSpan? CompletionTime { get; set; }
         public string? LinkedInProfileUrl { get; set; }
         public IFormFile? ScoreImage { get; set; }
+        public DateTime? DateAchieved { get; set; }
     }
 }

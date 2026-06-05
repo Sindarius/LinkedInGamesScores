@@ -25,6 +25,7 @@ export default {
         const isSubmitting = ref(false);
         const showErrors = ref(false);
         const isParsingOCR = ref(false);
+        const scoreDate = ref(new Date());
 
         // Use computed properties for player data that sync with store
         const playerName = computed({
@@ -381,6 +382,11 @@ export default {
             }
         };
 
+        const toUtcNoon = (date) => {
+            const d = new Date(date);
+            return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0)).toISOString();
+        };
+
         const submitScore = async () => {
             showErrors.value = true;
 
@@ -394,7 +400,8 @@ export default {
                 const gameScore = {
                     gameId: selectedGame.value.id,
                     playerName: playerName.value,
-                    linkedInProfileUrl: linkedinUrl.value || null
+                    linkedInProfileUrl: linkedinUrl.value || null,
+                    dateAchieved: toUtcNoon(scoreDate.value)
                 };
 
                 if (selectedGame.value.scoringType === 1) {
@@ -460,6 +467,7 @@ export default {
             minutes.value = null;
             seconds.value = null;
             ranOutOfGuesses.value = false;
+            scoreDate.value = new Date();
             scoreImage.value = null;
             imagePreview.value = null;
             if (fileUploadRef.value) {
@@ -476,6 +484,7 @@ export default {
             minutes,
             seconds,
             ranOutOfGuesses,
+            scoreDate,
             scoreImage,
             imagePreview,
             linkedinUrl,
@@ -542,6 +551,11 @@ export default {
 
                     <small v-if="selectedGame.scoringType === 1 && (!guessCount || guessCount <= 0) && !ranOutOfGuesses && showErrors" class="p-error">Number of guesses is required.</small>
                     <small v-if="selectedGame.scoringType === 2 && (seconds === null || seconds < 0 || seconds >= 60) && showErrors" class="p-error">Valid completion time is required.</small>
+                </div>
+
+                <div class="field">
+                    <label for="scoreDate">Date Played</label>
+                    <DatePicker id="scoreDate" v-model="scoreDate" :maxDate="new Date()" showIcon class="w-full" dateFormat="yy-mm-dd" />
                 </div>
 
                 <div class="field">
